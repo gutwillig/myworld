@@ -1,0 +1,351 @@
+.sign {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  padding: 6px 13px 7px;
+  border-radius: 999px;
+  background: rgba(251, 251, 244, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 6px 16px -6px rgba(46, 74, 59, 0.35),
+    0 1px 2px rgba(46, 74, 59, 0.12);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-radius 220ms ease,
+    padding 220ms ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.signName {
+  display: block;
+}
+
+/* Hover card: the sign grows a second line and a hint. */
+.signMeta {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+}
+
+.signHover .signMeta {
+  display: flex;
+  animation: metaIn 260ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+@keyframes metaIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.signLine {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 520;
+  color: var(--ink-soft);
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 220px;
+}
+
+.signHint {
+  display: block;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(46, 74, 59, 0.1);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+
+.sign::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-right: 1px solid rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.9);
+  transform: translateX(-50%) rotate(45deg);
+  border-bottom-right-radius: 2px;
+}
+
+.sign:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 3px;
+}
+
+.signPop {
+  animation: signPop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.signHover {
+  background: #ffffff;
+  transform: translateY(-6px);
+  border-radius: 16px;
+  padding: 9px 15px 9px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 10px 22px -8px rgba(46, 74, 59, 0.45),
+    0 1px 2px rgba(46, 74, 59, 0.12);
+}
+
+.signSelected .signMeta {
+  display: none;
+}
+
+.signSelected {
+  background: #fde4dc;
+  color: var(--coral-deep);
+  border-color: rgba(229, 105, 79, 0.55);
+}
+
+.signPast {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6c7a6f;
+  background: rgba(244, 239, 228, 0.88);
+}
+
+.homeSign {
+  composes: sign;
+  font-size: 12.5px;
+  background: var(--ink);
+  color: #f4f1e6;
+  border-color: rgba(46, 74, 59, 0.9);
+}
+
+.homeSign.signHover {
+  background: #3a5a49;
+}
+
+.townSign {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f7ecd8;
+  background: #8a6446;
+  padding: 5px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px -4px rgba(60, 40, 20, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes signPop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.islandFlag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 18px 11px;
+  border-radius: 18px;
+  background: rgba(251, 251, 244, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 36px -16px rgba(46, 74, 59, 0.45);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(10px) scale(0.92);
+  transition:
+    opacity 420ms ease,
+    transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  position: relative;
+  top: -58px;
+}
+
+.islandFlagOn {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 380ms;
+}
+
+.islandFlagName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.islandFlagMeta {
+  font: 650 10.5px/1 var(--font-ui);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.ghostSign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px 8px;
+  border-radius: 14px;
+  background: rgba(251, 251, 244, 0.78);
+  border: 1.5px dashed rgba(229, 105, 79, 0.75);
+  box-shadow: 0 10px 24px -12px rgba(46, 74, 59, 0.45);
+  font: 650 14px/1.1 var(--font-ui);
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: signPop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.ghostHint {
+  font: 700 10px/1 var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+
+/* Keepsake signs: quieter than building signs, shown only on hover. */
+.keepsakeSign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 13px 7px;
+  border-radius: 16px;
+  background: rgba(251, 251, 244, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 8px 18px -8px rgba(46, 74, 59, 0.4);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  user-select: none;
+  animation: keepsakeIn 240ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  transition: background 160ms ease;
+}
+
+.keepsakeSignBad {
+  background: rgba(255, 238, 232, 0.96);
+}
+
+@keyframes keepsakeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.keepsakeNote {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.keepsakeMeta {
+  font-size: 11.5px;
+  font-weight: 560;
+  color: var(--ink-soft);
+}
+
+.keepsakeSignBad .keepsakeMeta {
+  color: #9e2f22;
+}
+
+.keepsakeHint {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(46, 74, 59, 0.1);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+
+.noteForm {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  width: 220px;
+  padding: 9px 10px 8px;
+  border-radius: 18px;
+  background: rgba(251, 251, 244, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 14px 30px -12px rgba(46, 74, 59, 0.45);
+  font-family: var(--font-ui);
+  animation: keepsakeIn 240ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.noteKind {
+  padding: 0 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.noteInput {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--coral);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 650;
+  outline: none;
+}
+
+.noteInput::placeholder {
+  color: rgba(46, 74, 59, 0.32);
+}
+
+.noteHint {
+  padding: 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-align: right;
+}

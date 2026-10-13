@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 68 24% 92%;
+    --foreground: 147 23% 24%;
+    --card: 60 43% 97%;
+    --card-foreground: 147 23% 24%;
+    --popover: 60 43% 97%;
+    --popover-foreground: 147 23% 24%;
+    --primary: 10 75% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 103 22% 87%;
+    --secondary-foreground: 147 23% 24%;
+    --muted: 70 18% 89%;
+    --muted-foreground: 140 9% 42%;
+    --accent: 103 22% 87%;
+    --accent-foreground: 147 23% 24%;
+    --destructive: 6 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 75 14% 84%;
+    --input: 75 14% 84%;
+    --ring: 10 75% 60%;
+    --radius: 1rem;
+
+    --canvas: #eef0e4;
+    --surface: #fbfbf4;
+    --ink: #2e4a3b;
+    --ink-soft: #5d7365;
+    --ink-faint: #8a9a8e;
+    --coral: #e5694f;
+    --coral-deep: #c9503a;
+    --coral-tint: #fbe2da;
+    --sage: #a9c4a0;
+    --sage-tint: #dfe8d7;
+    --sand: #e8d9b5;
+    --hairline: rgba(46, 74, 59, 0.1);
+    --glass: rgba(251, 251, 244, 0.72);
+    --glass-strong: rgba(251, 251, 244, 0.88);
+    --glass-border: rgba(255, 255, 255, 0.75);
+    --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 24px 48px -20px rgba(46, 74, 59, 0.32), 0 2px 6px rgba(46, 74, 59, 0.06);
+
+    --font-ui: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--coral-tint);
+    color: var(--coral-deep);
+  }
+}
