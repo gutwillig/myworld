@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { ferryRoute, routeAt, seaOffset } from "@/grid/archipelago";
+import { routeAt, seaOffset } from "@/grid/archipelago";
+import { tripRoute } from "./Voyage";
 import { hexToWorld } from "@/grid/hex";
 import { useWorldStore } from "@/store/world";
 import { dragState } from "./dragState";
@@ -142,7 +143,7 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
       const f = travelFrame(travel, performance.now());
       const from = seaOffset(store.order.indexOf(travel.fromId));
       const to = seaOffset(store.order.indexOf(travel.toId));
-      const boat = routeAt(ferryRoute(from, to), f.boat).pos;
+      const boat = routeAt(tripRoute(travel.fromId, travel.toId), f.boat).pos;
       const ax = THREE.MathUtils.lerp(s.travelFrom.x, boat.x, f.out);
       const az2 = THREE.MathUtils.lerp(s.travelFrom.z, boat.z, f.out);
       goal.set(THREE.MathUtils.lerp(ax, to.x + lean.x, f.back), 0, THREE.MathUtils.lerp(az2, to.z + lean.z, f.back));

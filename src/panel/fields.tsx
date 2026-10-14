@@ -230,12 +230,13 @@ export function ResidentsField({
   hasWorld,
 }: {
   residents: string[];
-  onChange: (r: string[]) => void;
+  onChange?: (r: string[]) => void;
   onOpen?: (name: string) => void;
   hasWorld?: (name: string) => boolean;
 }) {
   const [draft, setDraft] = useState<string>("");
   const commit = () => {
+    if (!onChange) return;
     const names = parseResidents(draft).filter((n) => !residents.some((r) => r.toLowerCase() === n.toLowerCase()));
     if (names.length) onChange([...residents, ...names]);
     setDraft("");
@@ -251,7 +252,7 @@ export function ResidentsField({
                   type="button"
                   className={styles.pillOpen}
                   onClick={() => onOpen(r)}
-                  aria-label={hasWorld?.(r) ? `Visit ${r}’s world` : `Open ${r}’s profile`}
+                  aria-label={hasWorld?.(r) ? `Visit ${r}'s world` : `Open ${r}'s profile`}
                 >
                   <span className={styles.pillAvatar}>
                     <Avatar name={r} />
@@ -269,37 +270,41 @@ export function ResidentsField({
                   <span>{r}</span>
                 </>
               )}
-              <button type="button" className={styles.pillX} aria-label={`Remove ${r}`} onClick={() => onChange(residents.filter((_, j) => j !== i))}>
-                <X size={14} strokeWidth={2.4} />
-              </button>
+              {onChange && (
+                <button type="button" className={styles.pillX} aria-label={`Remove ${r}`} onClick={() => onChange(residents.filter((_, j) => j !== i))}>
+                  <X size={14} strokeWidth={2.4} />
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <form
-        className={styles.addRow}
-        onSubmit={(e) => {
-          e.preventDefault();
-          commit();
-        }}
-      >
-        <Plus size={18} strokeWidth={2} aria-hidden className={styles.addIcon} />
-        <input
-          className={styles.addInput}
-          aria-label="Add residents, separated by commas"
-          placeholder="Add a resident"
-          value={draft}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v.endsWith(",")) {
-              const names = parseResidents(v).filter((n) => !residents.some((r) => r.toLowerCase() === n.toLowerCase()));
-              if (names.length) onChange([...residents, ...names]);
-              setDraft("");
-            } else setDraft(v);
+      {onChange && (
+        <form
+          className={styles.addRow}
+          onSubmit={(e) => {
+            e.preventDefault();
+            commit();
           }}
-          onBlur={commit}
-        />
-      </form>
+        >
+          <Plus size={18} strokeWidth={2} aria-hidden className={styles.addIcon} />
+          <input
+            className={styles.addInput}
+            aria-label="Add residents, separated by commas"
+            placeholder="Add a resident"
+            value={draft}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v.endsWith(",")) {
+                const names = parseResidents(v).filter((n) => !residents.some((r) => r.toLowerCase() === n.toLowerCase()));
+                if (names.length) onChange([...residents, ...names]);
+                setDraft("");
+              } else setDraft(v);
+            }}
+            onBlur={commit}
+          />
+        </form>
+      )}
     </div>
   );
 }

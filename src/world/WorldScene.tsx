@@ -7,6 +7,7 @@ import { DEFAULT_ACCENT } from "@/buildings/kit";
 import { seaOffset } from "@/grid/archipelago";
 import { hexToWorld } from "@/grid/hex";
 import { OLD_TOWN_ANCHOR } from "@/grid/layout";
+import { Peaks } from "./Peaks";
 import { groundHeight, terrainProfile } from "@/grid/terrainProfile";
 import type { Building, World } from "@/store/types";
 import { useWorldStore } from "@/store/world";
@@ -21,7 +22,7 @@ import { SceneLabel } from "./SceneLabel";
 import { Terrain } from "./Terrain";
 import { Keepsakes, keepsakeClearings, useKeepsakeSpots } from "./Keepsakes";
 import { type Clearing, Trees } from "./Trees";
-import { Boat, Dock, OpenSea, RouteLine, cameraFocus } from "./Voyage";
+import { Airstrip, Dock, OpenSea, Plane, RouteLine, cameraFocus } from "./Voyage";
 import styles from "./signs.module.css";
 
 const keyOf = (b: Building) => b.id;
@@ -163,6 +164,7 @@ const Island = memo(function Island({ worldId, index }: { worldId: string; index
   return (
     <group position={[off.x, 0, off.z]}>
       <Terrain terrain={world.terrain} seed={world.id} />
+      <Peaks seed={world.id} terrain={world.terrain} />
       <Trees seed={world.id} terrain={world.terrain} clearings={clearings} />
       <Roads roads={world.roads} terrain={world.terrain} epoch={epoch} />
       <Keepsakes
@@ -182,7 +184,7 @@ const Island = memo(function Island({ worldId, index }: { worldId: string; index
           <PlacementGhost terrain={world.terrain} />
         </>
       )}
-      <Dock />
+      {terrainProfile(world.terrain).shore ? <Dock /> : <Airstrip seed={world.id} />}
       <IslandFlag world={world} isHome={isHome} />
     </group>
   );
@@ -225,7 +227,7 @@ export default function WorldScene({ panelOpen }: { panelOpen: boolean }) {
         <OpenSea />
         <Islands />
         <RouteLine />
-        <Boat />
+        <Plane />
       </Suspense>
     </Canvas>
   );

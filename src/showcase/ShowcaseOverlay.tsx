@@ -4,6 +4,7 @@ import { BuildingIcon } from "@/buildings/BuildingIcon";
 import { buildingAccent } from "@/buildings/kit";
 import { typeLabel } from "@/buildings/suggest";
 import type { Building, Showcase } from "@/store/types";
+import { UpdatesField } from "@/updates/UpdatesField";
 import { parseVideo, ytEmbedUrl, ytThumb } from "./media";
 import styles from "./showcase.module.css";
 
@@ -13,6 +14,8 @@ export type ShowcaseOverlayProps = {
   canEdit: boolean;
   onClose: () => void;
   onEdit: () => void;
+  /** Owner only: post news straight from the showcase. */
+  onPostUpdate?: (buildingId: string, text: string) => boolean;
 };
 
 export const showcaseLabel = (s: Showcase): string =>
@@ -24,6 +27,7 @@ export const ShowcaseOverlay = memo(function ShowcaseOverlay({
   canEdit,
   onClose,
   onEdit,
+  onPostUpdate,
 }: ShowcaseOverlayProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,6 +72,13 @@ export const ShowcaseOverlay = memo(function ShowcaseOverlay({
         )}
 
         {building.oneLiner && <p className={styles.liner}>{building.oneLiner}</p>}
+
+        {(canEdit || (building.updates?.length ?? 0) > 0) && (
+          <div className={styles.news}>
+            <p className={styles.newsTitle}>Updates</p>
+            <UpdatesField building={building} onPost={canEdit ? onPostUpdate : undefined} limit={3} />
+          </div>
+        )}
 
         {building.links.length > 0 && (
           <div className={styles.linksRow}>

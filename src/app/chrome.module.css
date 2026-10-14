@@ -118,3 +118,180 @@
 .dialogAction:hover {
   background: var(--coral-deep);
 }
+
+/* Auth Dialog */
+.authDialog {
+  background: var(--surface);
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  max-width: 400px;
+}
+
+.authTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.authDesc {
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.authInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.authInputIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.authInput {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px 0 44px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 15px/1 var(--font-ui);
+  transition: border-color 140ms ease;
+}
+
+.authInput:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.authInput::placeholder {
+  color: var(--ink-soft);
+}
+
+.authError {
+  color: var(--coral);
+  font-size: 13px;
+  margin: 0;
+}
+
+.authSubmit {
+  height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 600 15px/1 var(--font-ui);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.authSubmit:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+
+.authSubmit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.authSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.authSent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.authRetry {
+  border: 0;
+  background: none;
+  color: var(--coral);
+  font: 600 14px/1 var(--font-ui);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.authRetry:hover {
+  color: var(--coral-deep);
+}
+
+/* Auth Button in Menu */
+.menuBtnAuth {
+  composes: menuBtn;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.menuBtnAuth:hover {
+  background: var(--ink-soft);
+}
+
+.menuSep {
+  width: 1px;
+  height: 24px;
+  background: var(--hairline);
+  margin: 0 4px;
+}
+
+/* Auth Callback Page */
+.authCallbackPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  font-family: var(--font-ui);
+}
+
+.authCallbackCard {
+  text-align: center;
+  padding: 40px;
+  max-width: 400px;
+}
+
+.authCallbackCard h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+.authCallbackCard p {
+  color: var(--ink-soft);
+  margin: 0 0 20px;
+}
+
+.authCallbackCard button {
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 600 14px/1 var(--font-ui);
+  cursor: pointer;
+}

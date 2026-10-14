@@ -1,19 +1,24 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Hand, Home as HomeIcon, Sailboat } from "lucide-react";
+import { Hand, Home as HomeIcon, Plane } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ferryRoute, routeLength, seaOffset } from "@/grid/archipelago";
 import { KeepsakesMenu } from "@/keepsakes/KeepsakesMenu";
+import { useCanEdit } from "@/lib/ownership";
 import { PromptBar } from "@/loop/PromptBar";
+import { useAuthStore } from "@/store/auth";
 import { BuildingPanel } from "@/panel/BuildingPanel";
 import { ShowcaseOverlay } from "@/showcase/ShowcaseOverlay";
 import type { Link, Status } from "@/store/types";
 import { getWorldBySlug, useWorldStore } from "@/store/world";
 import { worldForResident } from "@/visit/residents";
+import { NewsStack } from "@/updates/NewsStack";
 import { VisitPreview } from "@/visit/VisitPreview";
 import { useFx } from "@/world/fx";
 import { setLabelHost } from "@/world/SceneLabel";
 import { Brand } from "./Brand";
+import { ClaimWorldBanner } from "./ClaimWorldBanner";
+import { WorldChoice } from "./WorldChoice";
 import { NeighborsMenu, worldPath } from "./NeighborsMenu";
 import neighbors from "./neighbors.module.css";
 import { WorldMenu } from "./WorldMenu";
@@ -31,6 +36,8 @@ export default function WorldPage() {
   const setStatus = useWorldStore((s) => s.setStatus);
   const knockDown = useWorldStore((s) => s.knockDown);
   const restoreBuilding = useWorldStore((s) => s.restoreBuilding);
+  const postUpdate = useWorldStore((s) => s.postUpdate);
+  const removeUpdate = useWorldStore((s) => s.removeUpdate);
   const [closing, setClosing] = useState<boolean>(false);
   const [picking, setPicking] = useState<boolean>(false);
   /** The showcase opens on click; the owner can still reach the panel via Edit. */
@@ -45,7 +52,10 @@ export default function WorldPage() {
   const lotHover = useFx((s) => s.lotHover);
   const visiting = useFx((s) => !!s.visit);
   const order = useWorldStore((s) => s.order);
+  const started = useWorldStore((s) => s.started);
   const isHome = currentId === homeId;
+  const canEdit = useCanEdit();
+  const user = useAuthStore((s) => s.user);
   const targetId = worldSlug ? getWorldBySlug(worlds, worldSlug)?.id : homeId;
 
   const building = travel ? null : (world.buildings.find((b) => b.id === selectedId) ?? null);
@@ -127,7 +137,7 @@ export default function WorldPage() {
   useEffect(() => {
     if (tip && (moving || selectedId)) dismissTip();
   }, [tip, moving, selectedId, dismissTip]);
-  const showTip = tip && world.buildings.length > 0 && !panelOpen && !picking && !travel && !arrived && !moving && !visiting;
+  const showTip = tip && world.buildings.length > 0 && !panelOpen && !picking && !travel && !arrived && !moving && !visiting && started;
 
   const openResident = useCallback(
     (name: string) => {
@@ -197,13 +207,16 @@ export default function WorldPage() {
       <header className={styles.top}>
         <Brand />
         <div className={styles.topRight}>
-          {isHome && <KeepsakesMenu />}
+          {canEdit && <KeepsakesMenu />}
           <NeighborsMenu />
           <WorldMenu />
         </div>
       </header>
 
-      {!isHome && !travel && (
+      <NewsStack hidden={panelOpen || !!travel || !!moving || visiting || !started} />
+
+      {/* Authenticated user visiting another world - show Fly home */}
+      {user && !isHome && !travel && (
         <div className={neighbors.visiting} key={currentId}>
           <span>
             Visiting <strong>{world.ownerName}&rsquo;s world</strong>
@@ -216,10 +229,16 @@ export default function WorldPage() {
               if (home) navigate(worldPath(home, homeId));
             }}
           >
-            <HomeIcon size={15} strokeWidth={2.2} aria-hidden /> Sail home
+            <HomeIcon size={15} strokeWidth={2.2} aria-hidden /> Fly home
           </button>
         </div>
       )}
+
+      {/* Unauthenticated visitor - show claim CTA */}
+      <ClaimWorldBanner
+        ownerName={world.ownerName}
+        hidden={isHome || panelOpen || !!travel || !!arrived || visiting}
+      />
 
       {world.buildings.length === 0 && !panelOpen && !picking && !travel && (
         <p className={styles.welcome} key={currentId}>
@@ -232,8 +251,8 @@ export default function WorldPage() {
       {travel && destination && (
         <div className={neighbors.hud} role="status" key={travel.start}>
           <div className={neighbors.hudLabel}>
-            <Sailboat size={20} strokeWidth={2.2} aria-hidden />
-            {travel.toId === homeId ? "Sailing home" : `Sailing to ${destination.ownerName}’s world`}
+            <Plane size={20} strokeWidth={2.2} aria-hidden />
+            {travel.toId === homeId ? "Flying home" : `Flying to ${destination.ownerName}'s world`}
           </div>
           <div className={neighbors.track}>
             <div className={neighbors.fill} style={{ animationDuration: `${travel.duration}s` }} />
@@ -268,7 +287,7 @@ export default function WorldPage() {
         </button>
       )}
 
-      <PromptBar hidden={panelOpen || !!travel || !!arrived || !!moving || visiting} onPickingChange={setPicking} />
+      <PromptBar hidden={!canEdit || panelOpen || !!travel || !!arrived || !!moving || visiting} onPickingChange={setPicking} />
 
       {building && showPanel && (
         <div className={`${styles.panelSlot} ${closing ? styles.panelOut : styles.panelIn}`} key={building.id}>
@@ -288,6 +307,9 @@ export default function WorldPage() {
             onShowcase={(showcase) => updateBuilding(building.id, { showcase })}
             onOpenResident={openResident}
             residentHasWorld={residentHasWorld}
+            onPostUpdate={postUpdate}
+            onRemoveUpdate={(updateId) => removeUpdate(building.id, updateId)}
+            readOnly={!canEdit}
           />
         </div>
       )}
@@ -296,13 +318,16 @@ export default function WorldPage() {
         <ShowcaseOverlay
           key={building.id}
           building={building}
-          canEdit={isHome}
+          canEdit={canEdit}
           onClose={close}
           onEdit={() => setEditOverride(true)}
+          onPostUpdate={postUpdate}
         />
       )}
 
       <VisitPreview />
+
+      {!started && <WorldChoice />}
     </main>
   );
 }

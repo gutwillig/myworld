@@ -1,0 +1,37 @@
+{
+  "rewrites": [
+    {
+      "source": "/w/:world/:building",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|pinterest|embedly|rogerbot|showyoubot|redditbot|applebot)"
+        }
+      ],
+      "destination": "/api/og-meta?world=:world&building=:building"
+    },
+    {
+      "source": "/w/:world",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|pinterest|embedly|rogerbot|showyoubot|redditbot|applebot)"
+        }
+      ],
+      "destination": "/api/og-meta?world=:world"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
+      ]
+    }
+  ]
+}

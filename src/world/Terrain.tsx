@@ -50,12 +50,15 @@ function triColor(profile: ReturnType<typeof terrainProfile>, cx: number, cy: nu
   const c = coastCoord(profile, cx, cz);
   const jitter = (rand() - 0.5) * 0.035;
   const col = new THREE.Color();
-  if (c > profile.waterLine - 0.1) {
-    col.set("#D9C59A");
+  if (!profile.shore) {
+    const n = smoothNoise(cx * 0.45 + 3, cz * 0.45 - 2);
+    col.set(n > 0.15 ? profile.grassAlt : profile.grass);
+  } else if (c > profile.waterLine - 0.1) {
+    col.set(profile.shoreWet);
   } else if (c > profile.sandStart + 0.15) {
     col.set(profile.sand);
   } else if (c > profile.sandStart - 0.35) {
-    col.set("#C9CD8E");
+    col.set(profile.shoreEdge);
   } else {
     const n = smoothNoise(cx * 0.45 + 3, cz * 0.45 - 2);
     col.set(n > 0.15 ? profile.grassAlt : profile.grass);
@@ -173,8 +176,8 @@ function buildWater(profile: ReturnType<typeof terrainProfile>): THREE.BufferGeo
   const pos: number[] = [];
   const col: number[] = [];
   const idx: number[] = [];
-  const shallow = new THREE.Color("#8ED2C6");
-  const deep = new THREE.Color("#4FA7A8");
+  const shallow = new THREE.Color(profile.waterShallow);
+  const deep = new THREE.Color(profile.waterDeep);
   const tmp = new THREE.Color();
   for (let i = 0; i <= rings; i++) {
     const r = (i / rings) * WATER_R;
@@ -184,9 +187,12 @@ function buildWater(profile: ReturnType<typeof terrainProfile>): THREE.BufferGeo
       const z = Math.sin(a) * r;
       pos.push(x, 0, z);
       const c = coastCoord(profile, x, z);
-      const seaSide = THREE.MathUtils.smoothstep(c, profile.waterLine - 3.2, profile.waterLine + 0.6);
+      // Landlocked worlds: the whole disk is valley floor, darkening away from the mesa.
+      const seaSide = profile.shore ? THREE.MathUtils.smoothstep(c, profile.waterLine - 3.2, profile.waterLine + 0.6) : 1;
       const fade = 1 - THREE.MathUtils.smoothstep(r, 13.5, 22);
-      const depth = THREE.MathUtils.smoothstep(c, profile.waterLine, profile.waterLine + 6);
+      const depth = profile.shore
+        ? THREE.MathUtils.smoothstep(c, profile.waterLine, profile.waterLine + 6)
+        : THREE.MathUtils.smoothstep(r, 8, 16);
       tmp.copy(shallow).lerp(deep, depth);
       col.push(tmp.r, tmp.g, tmp.b, Math.min(0.92, seaSide * fade * 0.95));
     }
@@ -218,7 +224,8 @@ const Water = memo(function Water({ terrain }: { terrain: TerrainKind }) {
     const t = clock.elapsedTime;
     const { travel } = useFx.getState();
     // Out at sea the open water takes over; each island keeps only a faint shallow halo.
-    if (mat.current) mat.current.opacity = travel ? 1 - 0.75 * travelFrame(travel, performance.now()).lift : 1;
+    if (mat.current) mat.current.opacity = travel && profile.shore ? 1 - 0.75 * travelFrame(travel, performance.now()).lift : 1;
+    if (!profile.shore) return;
     const attr = geo.getAttribute("position") as THREE.BufferAttribute;
     const arr = attr.array as Float32Array;
     for (let i = 0; i < arr.length; i += 3) {
@@ -235,8 +242,8 @@ const Water = memo(function Water({ terrain }: { terrain: TerrainKind }) {
         vertexColors
         transparent
         flatShading
-        roughness={0.35}
-        metalness={0.05}
+        roughness={profile.shore ? 0.35 : 1}
+        metalness={profile.shore ? 0.05 : 0}
         depthWrite={false}
       />
     </mesh>

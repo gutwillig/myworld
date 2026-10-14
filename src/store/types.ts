@@ -32,6 +32,9 @@ export type Showcase =
   | { template: "studio"; tagline: string; cover: string; cases: CaseStudy[] }
   | { template: "scrapbook"; tagline: string; shots: Shot[] };
 
+/** A short line of news from a building ("Hole 7 reopened"). Newest first on the building. */
+export type BuildingUpdate = { id: string; text: string; at: number };
+
 export type Building = {
   id: string;
   slug: string;
@@ -52,6 +55,8 @@ export type Building = {
   accent?: string;
   /** The media story shown when the building is opened. Missing = plain panel. */
   showcase?: Showcase;
+  /** News posted by the owner, newest first. Missing = none yet. */
+  updates?: BuildingUpdate[];
 };
 
 /** Small props that give an island personality (see keepsakes/catalog). */

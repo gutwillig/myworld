@@ -46,13 +46,15 @@ export const Trees = memo(function Trees({ seed, terrain, clearings = [] }: { se
       const x = w.x + (rand() - 0.5) * 0.9;
       const z = w.z + (rand() - 0.5) * 0.9;
       if (out.every((t) => Math.hypot(t.x - x, t.z - z) > 0.55)) {
+        // Mountain towns are all pines; beaches mix in round broadleafs.
+        const wantPine = terrain === "mountain" || rand() < 0.62;
         out.push({
           x,
           z,
           y: groundHeight(profile, x, z) - 0.02,
-          s: 0.75 + rand() * 0.55,
+          s: (terrain === "mountain" ? 0.95 : 0.75) + rand() * 0.55,
           rot: rand() * Math.PI,
-          kind: rand() < 0.62 ? "pine" : "round",
+          kind: wantPine ? "pine" : "round",
           tint: Math.floor(rand() * LEAVES.length),
         });
       }

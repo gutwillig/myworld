@@ -11,6 +11,7 @@ import { roadSource } from "@/grid/layout";
 import { groundHeight, terrainProfile } from "@/grid/terrainProfile";
 import type { Building, Terrain } from "@/store/types";
 import { Dust } from "./Dust";
+import { isFresh, latestUpdate } from "@/updates/news";
 import { SceneLabel } from "./SceneLabel";
 import { TIMING, clamp01, easeInCubic, easeOutBack, easeOutCubic, useFx } from "./fx";
 import { dragPoint, wasDrag } from "./dragState";
@@ -311,7 +312,8 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
     [building.id],
   );
 
-  const meta = building.oneLiner.trim() || `${styleOf(building.type, building.style).label} ${typeLabel(building.type).toLowerCase()}`;
+  const news = isFresh(building) ? latestUpdate(building) : undefined;
+  const meta = news?.text ?? (building.oneLiner.trim() || `${styleOf(building.type, building.style).label} ${typeLabel(building.type).toLowerCase()}`);
 
   return (
     <group ref={root}>
@@ -352,9 +354,13 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
                 if (interactive && !busy) select(building.id);
               }}
             >
+              {news && <span className={styles.pennant} aria-label="New update" />}
               <span className={styles.signName}>{building.name}</span>
               <span className={styles.signMeta} aria-hidden={!isHovered}>
-                <span className={styles.signLine}>{meta}</span>
+                <span className={styles.signLine}>
+                  {news && <span className={styles.signNew}>New · </span>}
+                  {meta}
+                </span>
                 <span className={styles.signHint}>Click to open · drag to move</span>
               </span>
             </button>

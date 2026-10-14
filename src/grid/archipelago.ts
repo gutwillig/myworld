@@ -1,3 +1,4 @@
+import type { Terrain } from "@/store/types";
 import { terrainProfile } from "./terrainProfile";
 
 /**
@@ -38,12 +39,25 @@ export const DOCK = {
   mooring: add({ x: COAST.x * 10.9, z: COAST.z * 10.9 }, SHORE, DOCK_SHORE_SHIFT + 0.85),
 };
 
+/** The airstrip on landlocked (mountain) worlds: same front corner, running out to the cliff edge. */
+export const AIRSTRIP = {
+  root: add({ x: COAST.x * 5.7, z: COAST.z * 5.7 }, SHORE, DOCK_SHORE_SHIFT),
+  tip: add({ x: COAST.x * 8.5, z: COAST.z * 8.5 }, SHORE, DOCK_SHORE_SHIFT),
+  /** Where the plane parks, nose toward the drop. */
+  stand: add({ x: COAST.x * 6.15, z: COAST.z * 6.15 }, SHORE, DOCK_SHORE_SHIFT),
+};
+
+/** Where your plane rests on a world: tied up at the dock, or parked on the airstrip. */
+export function standFor(terrain: Terrain | undefined): Vec2 {
+  return terrainProfile(terrain ?? "beach").shore ? DOCK.mooring : AIRSTRIP.stand;
+}
+
 export type Route = { p0: Vec2; p1: Vec2; p2: Vec2; p3: Vec2 };
 
-/** A ferry route between two islands' moorings: out to sea, along the coast, in to the dock. */
-export function ferryRoute(from: Vec2, to: Vec2): Route {
-  const p0 = add(from, DOCK.mooring);
-  const p3 = add(to, DOCK.mooring);
+/** A flight between two islands' stands: out past the coast, along it, back in to land. */
+export function ferryRoute(from: Vec2, to: Vec2, fromStand: Vec2 = DOCK.mooring, toStand: Vec2 = DOCK.mooring): Route {
+  const p0 = add(from, fromStand);
+  const p3 = add(to, toStand);
   const reach = Math.min(11, 5 + Math.hypot(to.x - from.x, to.z - from.z) * 0.12);
   return { p0, p1: add(p0, COAST, reach), p2: add(p3, COAST, reach), p3 };
 }

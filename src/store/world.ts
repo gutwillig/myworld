@@ -4,7 +4,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { hexEquals, type Hex } from "@/grid/hex";
 import { HOME, computeRoads, lotZone, pickActiveLot, pickOldTownLot } from "@/grid/layout";
 import { MAX_KEEPSAKES, NOTE_MAX, parseKeepsakes } from "@/keepsakes/catalog";
-import type { Building, BuildingType, Keepsake, KeepsakeKind, KeepsakePin, Showcase, Status, Terrain, World } from "./types";
+import { UPDATES_KEPT, UPDATE_MAX } from "@/updates/news";
+import type { Building, BuildingType, BuildingUpdate, Keepsake, KeepsakeKind, KeepsakePin, Showcase, Status, Terrain, World } from "./types";
 
 export const STORAGE_KEY = "worlds.v1";
 export const STORE_VERSION = 5;
@@ -75,6 +76,7 @@ export function parseWorld(raw: unknown): World {
       ...(typeof b.grounds === "string" ? { grounds: b.grounds } : {}),
       ...(typeof b.accent === "string" ? { accent: b.accent } : {}),
       ...(b.showcase && typeof b.showcase === "object" ? { showcase: b.showcase as Showcase } : {}),
+      ...(Array.isArray(b.updates) ? { updates: parseUpdates(b.updates) } : {}),
     }));
   const world: World = {
     ...base,
@@ -88,6 +90,27 @@ export function parseWorld(raw: unknown): World {
   world.roads = computeRoads(world);
   return world;
 }
+
+/** Keeps only well-formed updates, newest first, capped. */
+function parseUpdates(raw: unknown[]): BuildingUpdate[] {
+  return raw
+    .filter((u): u is BuildingUpdate => !!u && typeof (u as BuildingUpdate).text === "string" && typeof (u as BuildingUpdate).at === "number")
+    .map((u) => ({ id: u.id || nanoid(8), text: u.text.slice(0, UPDATE_MAX), at: u.at }))
+    .sort((a, b) => b.at - a.at)
+    .slice(0, UPDATES_KEPT);
+}
+
+const HOUR = 3600_000;
+/** Ross's town has a little news so the board isn't empty on a first visit. */
+const rossNews = (name: string, now: number): BuildingUpdate[] | undefined => {
+  if (name === "Film Club") return [{ id: nanoid(8), text: "Friday screening: Rear Window, 8pm", at: now - 2 * HOUR }];
+  if (name === "Ross & Co.") return [{ id: nanoid(8), text: "Q3 deck ships Friday — comments open", at: now - 50 * HOUR }];
+  return undefined;
+};
+const withRossNews = (w: World): World => {
+  const now = Date.now();
+  return { ...w, buildings: w.buildings.map((b) => (b.updates?.length ? b : { ...b, ...(rossNews(b.name, now) ? { updates: rossNews(b.name, now) } : {}) })) };
+};
 
 /** Stand-in showcase for a building name, so older worlds demo the feature. */
 function demoShowcase(name: string): Showcase | undefined {
@@ -149,12 +172,12 @@ function withBuildings(
 
 /** Ross's starter world: placeholder buildings to rename, so travel has somewhere to land. */
 function seedRoss(): World {
-  return withBuildings({ ...createEmptyWorld("Ross"), keepsakes: rossKeepsakes() }, [
+  return withRossNews(withBuildings({ ...createEmptyWorld("Ross"), keepsakes: rossKeepsakes() }, [
     { name: "Ross & Co.", type: "office", oneLiner: "The day job." },
     { name: "Film Club", type: "theater", oneLiner: "Sunday screenings.", showcase: demoShowcase("Film Club") },
     { name: "Pickup Soccer", type: "clubhouse" },
     { name: "First Band", type: "studio", status: "past", showcase: demoShowcase("First Band") },
-  ]);
+  ]));
 }
 
 /** The founder's own: skiing, surfing and the Red Sox. */
@@ -163,16 +186,30 @@ const homeKeepsakes = (): Keepsake[] => [
   { kind: "ski", note: "" },
   { kind: "surf", note: "" },
 ];
+
+/** What a brand-new world starts with, by terrain. */
+export const starterKeepsakes = (terrain: Terrain): Keepsake[] =>
+  terrain === "mountain"
+    ? [
+        { kind: "ski", note: "First tracks" },
+        { kind: "observatory", note: "" },
+        { kind: "garden", note: "" },
+      ]
+    : [
+        { kind: "ballpark", note: "Go Sox!" },
+        { kind: "surf", note: "" },
+        { kind: "bonfire", note: "" },
+      ];
 const rossKeepsakes = (): Keepsake[] => [
   { kind: "bonfire", note: "Friday nights" },
   { kind: "hoop", note: "" },
 ];
 
-type WorldBook = { worlds: Record<string, World>; order: string[]; homeId: string };
+type WorldBook = { worlds: Record<string, World>; order: string[]; homeId: string; started: boolean };
 
 function initialBook(home: World): WorldBook {
-  const ross = seedRoss();
-  return { worlds: { [home.id]: home, [ross.id]: ross }, order: [home.id, ross.id], homeId: home.id };
+  // Start with just the user's world - founder's world is fetched from server on init
+  return { worlds: { [home.id]: home }, order: [home.id], homeId: home.id, started: false };
 }
 
 export type AddResult = { ok: true; building: Building } | { ok: false; reason: string };
@@ -205,6 +242,10 @@ type WorldState = WorldBook & {
   createWorld: (ownerName: string) => World;
   /** Makes a world the one on screen. Travel animation lives in the renderer. */
   visit: (id: string) => void;
+  /** First-run: skin the home world with the chosen terrain and seed its keepsakes. */
+  chooseHome: (terrain: Terrain) => void;
+  /** Re-skins the home world's town (beach ↔ mountain), keeping buildings and keepsakes. */
+  setHomeTerrain: (terrain: Terrain) => void;
   /**
    * Adds a keepsake to the world on screen, or takes it away if it's already there.
    * False when the island already holds MAX_KEEPSAKES.
@@ -214,6 +255,9 @@ type WorldState = WorldBook & {
   setKeepsakeNote: (kind: KeepsakeKind, note: string) => void;
   /** Pins keepsakes where they were dropped (pass every one on screen so none shuffle). */
   pinKeepsakes: (pins: { kind: KeepsakeKind; at: KeepsakePin }[]) => void;
+  /** Posts a line of news on a building in your own world. False when empty or not yours. */
+  postUpdate: (buildingId: string, text: string) => boolean;
+  removeUpdate: (buildingId: string, updateId: string) => void;
 };
 
 function withRoads(world: World): World {
@@ -223,11 +267,28 @@ function withRoads(world: World): World {
 const firstHome = createEmptyWorld();
 const firstBook = initialBook(firstHome);
 
+// Import queueSave lazily to avoid circular dependency
+let queueSaveImpl: ((world: World) => void) | null = null;
+const queueSave = (world: World) => {
+  if (!queueSaveImpl) {
+    import("./sync").then((m) => {
+      queueSaveImpl = m.queueSave;
+      queueSaveImpl(world);
+    });
+  } else {
+    queueSaveImpl(world);
+  }
+};
+
 export const useWorldStore = create<WorldState>()(
   persist(
     (set, get) => {
-      /** Writes the current world back into the book. */
-      const commit = (world: World) => ({ world, worlds: { ...get().worlds, [world.id]: world } });
+      /** Writes the current world back into the book, and queues a server sync if appropriate. */
+      const commit = (world: World) => {
+        // Queue sync to server for home world
+        queueSave(world);
+        return { world, worlds: { ...get().worlds, [world.id]: world } };
+      };
       /** Swaps the current world for a different one (import/reset), keeping its place in the sea. */
       const swapCurrent = (next: World) => {
         const { worlds, order, homeId, currentId } = get();
@@ -354,7 +415,13 @@ export const useWorldStore = create<WorldState>()(
 
       replaceWorld: (w) => set((s) => ({ ...swapCurrent(w), epoch: s.epoch + 1 })),
 
-      reset: () => set((s) => ({ ...swapCurrent(createEmptyWorld(s.world.ownerName)), epoch: s.epoch + 1 })),
+      reset: () =>
+        set((s) => ({
+          ...swapCurrent(createEmptyWorld(s.world.ownerName)),
+          epoch: s.epoch + 1,
+          // Resetting home starts over from the choice screen.
+          started: s.currentId === s.homeId ? false : s.started,
+        })),
 
       createWorld: (ownerName) => {
         const { worlds, order } = get();
@@ -369,6 +436,31 @@ export const useWorldStore = create<WorldState>()(
         const w = get().worlds[id];
         if (!w || id === get().currentId) return;
         set({ currentId: id, world: w });
+      },
+
+      setHomeTerrain: (terrain) => {
+        const { worlds, homeId, currentId } = get();
+        const home = worlds[homeId];
+        if (!home || home.terrain === terrain) return;
+        const next = withRoads({ ...home, terrain });
+        set({
+          worlds: { ...worlds, [homeId]: next },
+          ...(currentId === homeId ? { world: next } : {}),
+          epoch: get().epoch + 1,
+        });
+      },
+
+      chooseHome: (terrain) => {
+        const { worlds, homeId } = get();
+        const home = worlds[homeId];
+        if (!home) return;
+        const world = withRoads({ ...home, terrain, keepsakes: starterKeepsakes(terrain) });
+        set({
+          worlds: { ...worlds, [homeId]: world },
+          world,
+          started: true,
+          epoch: get().epoch + 1,
+        });
       },
 
       toggleKeepsake: (kind) => {
@@ -399,13 +491,36 @@ export const useWorldStore = create<WorldState>()(
         });
         set(commit({ ...world, keepsakes }));
       },
+
+      postUpdate: (buildingId, text) => {
+        const { world, currentId, homeId } = get();
+        const clean = text.trim().replace(/\s+/g, " ").slice(0, UPDATE_MAX);
+        if (!clean || currentId !== homeId) return false;
+        const b = world.buildings.find((x) => x.id === buildingId);
+        if (!b) return false;
+        const update: BuildingUpdate = { id: nanoid(8), text: clean, at: Date.now() };
+        const buildings = world.buildings.map((x) =>
+          x.id === buildingId ? { ...x, updates: [update, ...(x.updates ?? [])].slice(0, UPDATES_KEPT) } : x,
+        );
+        set(commit({ ...world, buildings }));
+        return true;
+      },
+
+      removeUpdate: (buildingId, updateId) => {
+        const { world, currentId, homeId } = get();
+        if (currentId !== homeId) return;
+        const buildings = world.buildings.map((x) =>
+          x.id === buildingId ? { ...x, updates: (x.updates ?? []).filter((u) => u.id !== updateId) } : x,
+        );
+        set(commit({ ...world, buildings }));
+      },
       };
     },
     {
       name: STORAGE_KEY,
       version: STORE_VERSION,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ version: s.version, worlds: s.worlds, order: s.order, homeId: s.homeId }),
+      partialize: (s) => ({ version: s.version, worlds: s.worlds, order: s.order, homeId: s.homeId, started: s.started }),
       migrate: (persisted, fromVersion) => {
         try {
           let p = persisted as {
@@ -416,7 +531,7 @@ export const useWorldStore = create<WorldState>()(
           };
           if (fromVersion < 2) {
             // v1 stored a single world: it becomes home, and Ross moves in next door.
-            return { version: STORE_VERSION, ...initialBook(parseWorld(p.world)) } as unknown as WorldState;
+            return { version: STORE_VERSION, ...initialBook(parseWorld(p.world)), started: true } as unknown as WorldState;
           }
           if (fromVersion < 3 && p.worlds) {
             // v3 introduced showcases: stamp stand-ins onto buildings that obviously want one.
@@ -452,10 +567,12 @@ export const useWorldStore = create<WorldState>()(
         const worlds: Record<string, World> = {};
         for (const id of p.order) {
           const w = p.worlds[id];
-          if (w) worlds[id] = withRoads(w);
+          // Ross's town gets its starter news once, so neighbors have something to read.
+          if (w) worlds[id] = withRoads(w.ownerName === "Ross" && id !== p.homeId && !w.buildings.some((b) => b.updates?.length) ? withRossNews(w) : w);
         }
         const order = p.order.filter((id) => worlds[id]);
-        return { ...current, worlds, order, homeId: p.homeId, currentId: p.homeId, world: worlds[p.homeId] };
+        // Existing worlds predate the choice screen, so they've already started.
+        return { ...current, worlds, order, homeId: p.homeId, started: p.started ?? true, currentId: p.homeId, world: worlds[p.homeId] };
       },
     },
   ),

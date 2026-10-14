@@ -1,10 +1,12 @@
 import { memo, useMemo, useRef } from "react";
 import { type ThreeEvent, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { COAST, DOCK, type Route, SHORE, ferryRoute, routeAt, seaOffset } from "@/grid/archipelago";
+import { AIRSTRIP, COAST, DOCK, type Route, SHORE, ferryRoute, routeAt, seaOffset, standFor } from "@/grid/archipelago";
 import { terrainProfile } from "@/grid/terrainProfile";
+import type { Terrain } from "@/store/types";
 import { useWorldStore } from "@/store/world";
 import { travelFrame, useFx } from "./fx";
+import { boundaryRadii, radiusAt } from "./islandShape";
 
 const WATER_Y = terrainProfile("beach").waterY;
 /** Shared with the light rig and the open sea: where the camera is looking. */
@@ -49,76 +51,162 @@ export const Dock = memo(function Dock() {
   );
 });
 
-function hullGeometry(): THREE.ExtrudeGeometry {
-  // Side profile, bow pointing +x; extruded across the beam.
-  const s = new THREE.Shape();
-  s.moveTo(-0.46, 0.04);
-  s.lineTo(0.26, 0.0);
-  s.lineTo(0.56, 0.24);
-  s.lineTo(-0.5, 0.24);
-  s.closePath();
-  const g = new THREE.ExtrudeGeometry(s, { depth: 0.38, bevelEnabled: false });
-  g.translate(0, 0, -0.19);
-  return g;
+const STRIP = new THREE.MeshStandardMaterial({ color: "#CDBFA3", flatShading: true, roughness: 1 });
+const PAINT = new THREE.MeshStandardMaterial({ color: "#FBFBF4", flatShading: true, roughness: 0.9 });
+const STRIP_TOP = 0.12;
+
+/** A gravel bush strip on landlocked worlds, running off the mesa's front edge. Island-local. */
+export const Airstrip = memo(function Airstrip({ seed }: { seed: string }) {
+  const { center, length, yaw, dashes, sock } = useMemo(() => {
+    const radii = boundaryRadii(seed);
+    const dx = AIRSTRIP.tip.x - AIRSTRIP.root.x;
+    const dz = AIRSTRIP.tip.z - AIRSTRIP.root.z;
+    const full = Math.hypot(dx, dz);
+    const ux = dx / full;
+    const uz = dz / full;
+    // Stop short of the cliff so the strip never hangs over the edge.
+    let len = full;
+    while (len > 1.6) {
+      const x = AIRSTRIP.root.x + ux * len;
+      const z = AIRSTRIP.root.z + uz * len;
+      if (Math.hypot(x, z) < radiusAt(radii, Math.atan2(z, x)) - 0.35) break;
+      len -= 0.1;
+    }
+    const list: [number, number][] = [];
+    for (let i = 1; i <= 3; i++) {
+      const f = (i / 4) * len;
+      list.push([AIRSTRIP.root.x + ux * f, AIRSTRIP.root.z + uz * f]);
+    }
+    return {
+      center: [AIRSTRIP.root.x + (ux * len) / 2, AIRSTRIP.root.z + (uz * len) / 2] as [number, number],
+      length: len,
+      yaw: headingToYaw(ux, uz),
+      dashes: list,
+      sock: [AIRSTRIP.root.x - SHORE.x * 0.75, AIRSTRIP.root.z - SHORE.z * 0.75] as [number, number],
+    };
+  }, [seed]);
+  return (
+    <group>
+      <mesh position={[center[0], STRIP_TOP - 0.07, center[1]]} rotation-y={yaw} material={STRIP} receiveShadow>
+        <boxGeometry args={[length, 0.14, 0.82]} />
+      </mesh>
+      {dashes.map(([x, z], i) => (
+        <mesh key={i} position={[x, STRIP_TOP + 0.004, z]} rotation-y={yaw} material={PAINT}>
+          <boxGeometry args={[0.32, 0.01, 0.07]} />
+        </mesh>
+      ))}
+      <group position={[sock[0], STRIP_TOP, sock[1]]}>
+        <mesh position={[0, 0.3, 0]} material={POST} castShadow>
+          <cylinderGeometry args={[0.018, 0.022, 0.6, 5]} />
+        </mesh>
+        <mesh position={[0.12, 0.56, 0]} rotation-z={-Math.PI / 2 + 0.25} castShadow>
+          <coneGeometry args={[0.06, 0.24, 6, 1, true]} />
+          <meshStandardMaterial color="#E5694F" flatShading side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+    </group>
+  );
+});
+
+const smooth = (a: number, b: number, x: number): number => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+const CRUISE = 2.6;
+/** Height above the takeoff/landing surface at route progress t. */
+const altitude = (t: number): number => CRUISE * smooth(0.07, 0.32, t) * (1 - smooth(0.68, 0.93, t));
+/** Resting height on a world: floats on the water, or wheels on the strip. */
+const restY = (terrain: Terrain | undefined): number => (terrainProfile(terrain ?? "beach").shore ? WATER_Y + 0.02 : STRIP_TOP);
+
+/** The route a trip between two worlds flies, from stand to stand. */
+export function tripRoute(fromId: string, toId: string): Route {
+  const { order, worlds } = useWorldStore.getState();
+  return ferryRoute(
+    seaOffset(order.indexOf(fromId)),
+    seaOffset(order.indexOf(toId)),
+    standFor(worlds[fromId]?.terrain),
+    standFor(worlds[toId]?.terrain),
+  );
+}
+
+/** Height of the plane along a trip, so the dashed flight path and the plane agree. */
+function tripY(fromId: string, toId: string, t: number): number {
+  const { worlds } = useWorldStore.getState();
+  const base = THREE.MathUtils.lerp(restY(worlds[fromId]?.terrain), restY(worlds[toId]?.terrain), smooth(0.3, 0.7, t));
+  return base + altitude(t);
 }
 
 const WAKE_COUNT = 46;
 const WAKE_LIFE = 1.8;
+const CREAM = "#FBFBF4";
+const CORAL = "#E5694F";
+const INK = "#2E4A3B";
 
 /**
- * Your boat. Moored at the island you're on; during a trip it follows the ferry route and leaves
- * a foam trail. Clicking it opens the neighbors list.
+ * Your floatplane. Tied up at the dock on beach worlds, parked on the strip on mountain ones;
+ * during a trip it takes off, flies the route and lands. Clicking it opens the neighbors list.
  */
-export function Boat() {
+export function Plane() {
   const group = useRef<THREE.Group>(null);
-  const hull = useMemo(() => hullGeometry(), []);
+  const prop = useRef<THREE.Group>(null);
   const yaw = useRef<number>(headingToYaw(COAST.x, COAST.z));
+  const bank = useRef<number>(0);
   const wake = useRef<THREE.InstancedMesh>(null);
   const trail = useRef<{ x: number; z: number; born: number }[]>([]);
   const lastDrop = useRef<number>(0);
   const routeCache = useRef<{ key: string; route: Route } | null>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const g = group.current;
     if (!g) return;
     const now = performance.now();
     const time = clock.elapsedTime;
     const { travel } = useFx.getState();
-    const { order, currentId } = useWorldStore.getState();
+    const { order, currentId, worlds } = useWorldStore.getState();
     let x: number;
     let z: number;
+    let y: number;
     let targetYaw: number;
-    let speed = 0;
+    let pitch = 0;
+    let moving = false;
+    let onWater: boolean;
     if (travel) {
       const key = `${travel.fromId}>${travel.toId}`;
-      if (routeCache.current?.key !== key) {
-        routeCache.current = {
-          key,
-          route: ferryRoute(seaOffset(order.indexOf(travel.fromId)), seaOffset(order.indexOf(travel.toId))),
-        };
-      }
-      const f = travelFrame(travel, now);
-      const at = routeAt(routeCache.current.route, f.boat);
+      if (routeCache.current?.key !== key) routeCache.current = { key, route: tripRoute(travel.fromId, travel.toId) };
+      const t = travelFrame(travel, now).boat;
+      const at = routeAt(routeCache.current.route, t);
       x = at.pos.x;
       z = at.pos.z;
+      y = tripY(travel.fromId, travel.toId, t);
       targetYaw = headingToYaw(at.dir.x, at.dir.z);
-      speed = f.boat > 0 && f.boat < 1 ? 1 : 0;
+      pitch = (altitude(Math.min(1, t + 0.01)) - altitude(Math.max(0, t - 0.01))) * 0.9;
+      moving = t > 0 && t < 1;
+      const near = worlds[t < 0.5 ? travel.fromId : travel.toId];
+      onWater = terrainProfile(near?.terrain ?? "beach").shore && altitude(t) < 0.04;
     } else {
+      const here = worlds[currentId];
       const home = seaOffset(order.indexOf(currentId));
-      x = home.x + DOCK.mooring.x;
-      z = home.z + DOCK.mooring.z;
+      const stand = standFor(here?.terrain);
+      x = home.x + stand.x;
+      z = home.z + stand.z;
+      onWater = terrainProfile(here?.terrain ?? "beach").shore;
+      y = restY(here?.terrain) + (onWater ? Math.sin(time * 2.1) * 0.025 : 0);
       targetYaw = headingToYaw(COAST.x, COAST.z);
     }
-    // Shortest-path turn so arrival swings the bow back out to sea.
+    // Shortest-path turn so arrival swings the nose back out toward the open side.
     let d = targetYaw - yaw.current;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     yaw.current += d * (travel ? 0.25 : 0.035);
+    bank.current += (THREE.MathUtils.clamp(d * 4, -0.5, 0.5) - bank.current) * 0.1;
 
-    g.position.set(x, WATER_Y + 0.02 + Math.sin(time * 2.1) * 0.025, z);
-    g.rotation.set(Math.sin(time * 1.7) * 0.04, yaw.current, Math.sin(time * 1.3) * 0.03 + speed * 0.05);
+    g.position.set(x, y, z);
+    const rock = onWater && !moving ? Math.sin(time * 1.7) * 0.04 : 0;
+    g.rotation.set(rock + (moving ? bank.current : 0), yaw.current, pitch + (onWater ? Math.sin(time * 1.3) * 0.02 : 0), "YZX");
+    if (prop.current) prop.current.rotation.x += delta * (moving ? 38 : 0);
 
-    if (speed > 0 && now - lastDrop.current > 55) {
+    if (moving && onWater && now - lastDrop.current > 55) {
       lastDrop.current = now;
       const back = { x: Math.cos(yaw.current), z: -Math.sin(yaw.current) };
       trail.current.push({ x: x - back.x * 0.5, z: z - back.z * 0.5, born: now });
@@ -162,33 +250,77 @@ export function Boat() {
         onPointerOut={() => (document.body.style.cursor = "")}
         scale={1.15}
       >
-        <mesh geometry={hull} castShadow>
-          <meshStandardMaterial color="#F4EFE2" flatShading roughness={0.7} />
+        {/* Floats + struts */}
+        {[-0.22, 0.22].map((fz) => (
+          <group key={fz}>
+            <mesh position={[0.02, 0.05, fz]} castShadow>
+              <boxGeometry args={[0.86, 0.08, 0.09]} />
+              <meshStandardMaterial color={CREAM} flatShading roughness={0.7} />
+            </mesh>
+            <mesh position={[0.48, 0.07, fz]} rotation-z={0.5} castShadow>
+              <boxGeometry args={[0.12, 0.06, 0.088]} />
+              <meshStandardMaterial color={CREAM} flatShading roughness={0.7} />
+            </mesh>
+            {[-0.16, 0.2].map((sx) => (
+              <mesh key={sx} position={[sx, 0.17, fz * 0.6]} rotation-x={fz > 0 ? -0.5 : 0.5}>
+                <cylinderGeometry args={[0.012, 0.012, 0.2, 4]} />
+                <meshStandardMaterial color={INK} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        {/* Fuselage, cowl, windows */}
+        <mesh position={[0.04, 0.34, 0]} castShadow>
+          <boxGeometry args={[0.78, 0.2, 0.2]} />
+          <meshStandardMaterial color={CREAM} flatShading roughness={0.7} />
         </mesh>
-        <mesh position={[0.02, 0.06, 0]} castShadow>
-          <boxGeometry args={[0.96, 0.05, 0.4]} />
-          <meshStandardMaterial color="#2E4A3B" flatShading roughness={0.8} />
+        <mesh position={[0.47, 0.34, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.17, 0.17]} />
+          <meshStandardMaterial color={INK} flatShading roughness={0.8} />
         </mesh>
-        <mesh position={[-0.12, 0.36, 0]} castShadow>
-          <boxGeometry args={[0.34, 0.24, 0.3]} />
-          <meshStandardMaterial color="#FBFBF4" flatShading roughness={0.7} />
-        </mesh>
-        <mesh position={[-0.12, 0.5, 0]} castShadow>
-          <boxGeometry args={[0.42, 0.05, 0.36]} />
-          <meshStandardMaterial color="#E5694F" flatShading roughness={0.6} />
-        </mesh>
-        <mesh position={[0.02, 0.38, 0.152]}>
-          <boxGeometry args={[0.1, 0.08, 0.005]} />
+        <mesh position={[0.2, 0.39, 0]}>
+          <boxGeometry args={[0.2, 0.07, 0.204]} />
           <meshStandardMaterial color="#8ED2C6" roughness={0.2} />
         </mesh>
-        <mesh position={[-0.3, 0.72, 0]} castShadow>
-          <cylinderGeometry args={[0.012, 0.014, 0.42, 4]} />
-          <meshStandardMaterial color="#7A5A3E" />
+        <mesh position={[0.04, 0.29, 0]}>
+          <boxGeometry args={[0.78, 0.03, 0.204]} />
+          <meshStandardMaterial color={CORAL} flatShading />
         </mesh>
-        <mesh position={[-0.21, 0.86, 0]} rotation-y={0}>
-          <boxGeometry args={[0.17, 0.1, 0.006]} />
-          <meshStandardMaterial color="#E5694F" side={THREE.DoubleSide} />
+        {/* Tail */}
+        <mesh position={[-0.48, 0.37, 0]} castShadow>
+          <boxGeometry args={[0.32, 0.12, 0.1]} />
+          <meshStandardMaterial color={CREAM} flatShading roughness={0.7} />
         </mesh>
+        <mesh position={[-0.6, 0.52, 0]} rotation-z={-0.25} castShadow>
+          <boxGeometry args={[0.16, 0.22, 0.02]} />
+          <meshStandardMaterial color={CORAL} flatShading />
+        </mesh>
+        <mesh position={[-0.6, 0.39, 0]} castShadow>
+          <boxGeometry args={[0.14, 0.02, 0.44]} />
+          <meshStandardMaterial color={CORAL} flatShading />
+        </mesh>
+        {/* High wing with ink tips */}
+        <mesh position={[0.12, 0.47, 0]} castShadow>
+          <boxGeometry args={[0.26, 0.03, 1.5]} />
+          <meshStandardMaterial color={CORAL} flatShading roughness={0.6} />
+        </mesh>
+        {[-0.7, 0.7].map((wz) => (
+          <mesh key={wz} position={[0.12, 0.47, wz]}>
+            <boxGeometry args={[0.262, 0.032, 0.11]} />
+            <meshStandardMaterial color={INK} flatShading />
+          </mesh>
+        ))}
+        {/* Propeller */}
+        <group ref={prop} position={[0.535, 0.34, 0]}>
+          <mesh rotation-z={-Math.PI / 2}>
+            <coneGeometry args={[0.04, 0.07, 6]} />
+            <meshStandardMaterial color={CORAL} flatShading />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[0.012, 0.44, 0.04]} />
+            <meshStandardMaterial color={INK} />
+          </mesh>
+        </group>
       </group>
       <instancedMesh ref={wake} args={[undefined, undefined, WAKE_COUNT]} frustumCulled={false}>
         <circleGeometry args={[0.5, 7]} />
@@ -198,7 +330,7 @@ export function Boat() {
   );
 }
 
-/** The dashed ferry line across the water, shown while traveling. */
+/** The dashed flight path, drawn in the air along the plane's route while traveling. */
 export function RouteLine() {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const mat = useRef<THREE.MeshBasicMaterial>(null);
@@ -222,15 +354,14 @@ export function RouteLine() {
     const key = `${travel.fromId}>${travel.toId}`;
     if (shown.current === key) return;
     shown.current = key;
-    const { order } = useWorldStore.getState();
-    const route = ferryRoute(seaOffset(order.indexOf(travel.fromId)), seaOffset(order.indexOf(travel.toId)));
+    const route = tripRoute(travel.fromId, travel.toId);
     for (let i = 0; i < MAX; i++) {
       const t = (i + 0.5) / MAX;
       if (i % 2 === 1) {
         dummy.scale.setScalar(0.0001);
       } else {
         const at = routeAt(route, t);
-        dummy.position.set(at.pos.x, WATER_Y + 0.02, at.pos.z);
+        dummy.position.set(at.pos.x, tripY(travel.fromId, travel.toId, t) - 0.12, at.pos.z);
         dummy.rotation.set(-Math.PI / 2, 0, Math.atan2(at.dir.z, at.dir.x) * -1);
         dummy.scale.set(1, 1, 1);
       }
