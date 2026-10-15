@@ -39,7 +39,7 @@ function uniqueSlug(name: string, buildings: Building[], selfId?: string): strin
   return `${base}-${i}`;
 }
 
-export function createEmptyWorld(ownerName = "Gus", terrain: Terrain = "beach"): World {
+export function createEmptyWorld(ownerName = "Alex", terrain: Terrain = "beach"): World {
   return {
     id: nanoid(10),
     slug: slugify(ownerName).slice(0, 12) || "me",
