@@ -52,6 +52,60 @@ export const vimeoEmbedUrl = (id: string, hash?: string): string =>
   `https://player.vimeo.com/video/${id}${hash ? `?h=${hash}&` : "?"}autoplay=1&title=0&byline=0&portrait=0`;
 
 /**
+ * Samples pixels along the edges of an image and returns an averaged color.
+ * Used for scrapbook slide backgrounds so images sit on a matching tone.
+ */
+export function extractEdgeColor(src: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      const size = 64; // sample at small size for speed
+      const scale = Math.min(size / img.width, size / img.height);
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = c.getContext("2d");
+      if (!ctx) {
+        resolve("#1d2c23");
+        return;
+      }
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      const data = ctx.getImageData(0, 0, c.width, c.height).data;
+
+      let r = 0, g = 0, b = 0, count = 0;
+      const w = c.width, h = c.height;
+
+      // Sample top and bottom rows
+      for (let x = 0; x < w; x++) {
+        const topIdx = x * 4;
+        r += data[topIdx]; g += data[topIdx + 1]; b += data[topIdx + 2]; count++;
+        const botIdx = ((h - 1) * w + x) * 4;
+        r += data[botIdx]; g += data[botIdx + 1]; b += data[botIdx + 2]; count++;
+      }
+      // Sample left and right columns
+      for (let y = 1; y < h - 1; y++) {
+        const leftIdx = y * w * 4;
+        r += data[leftIdx]; g += data[leftIdx + 1]; b += data[leftIdx + 2]; count++;
+        const rightIdx = (y * w + w - 1) * 4;
+        r += data[rightIdx]; g += data[rightIdx + 1]; b += data[rightIdx + 2]; count++;
+      }
+
+      if (count === 0) {
+        resolve("#1d2c23");
+        return;
+      }
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      resolve(`rgb(${r}, ${g}, ${b})`);
+    };
+    img.onerror = () => resolve("#1d2c23");
+    img.src = src;
+  });
+}
+
+/**
  * Reads an image file and returns a resized JPEG data URL (long edge capped), small
  * enough for localStorage. Falls back to the raw data URL if decoding fails.
  */

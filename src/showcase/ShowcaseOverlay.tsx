@@ -5,7 +5,7 @@ import { buildingAccent } from "@/buildings/kit";
 import { typeLabel } from "@/buildings/suggest";
 import type { Building, Showcase } from "@/store/types";
 import { UpdatesField } from "@/updates/UpdatesField";
-import { parseVideo, vimeoEmbedUrl, vimeoThumb, ytEmbedUrl, ytThumb } from "./media";
+import { extractEdgeColor, parseVideo, vimeoEmbedUrl, vimeoThumb, ytEmbedUrl, ytThumb } from "./media";
 import styles from "./showcase.module.css";
 
 export type ShowcaseOverlayProps = {
@@ -196,6 +196,7 @@ function Studio({
 /** Photo template: one slide at a time, arrows / dots / keyboard. */
 function Scrapbook({ tagline, shots }: { tagline: string; shots: { id: string; src: string; caption: string }[] }) {
   const [i, setI] = useState<number>(0);
+  const [bgColors, setBgColors] = useState<Record<string, string>>({});
   const n = shots.length;
   const go = useCallback(
     (d: number) => {
@@ -212,13 +213,28 @@ function Scrapbook({ tagline, shots }: { tagline: string; shots: { id: string; s
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
 
+  // Extract edge colors from each shot
+  useEffect(() => {
+    shots.forEach((sh) => {
+      if (sh.src && !bgColors[sh.id]) {
+        extractEdgeColor(sh.src).then((color) => {
+          setBgColors((prev) => ({ ...prev, [sh.id]: color }));
+        });
+      }
+    });
+  }, [shots, bgColors]);
+
   return (
     <>
       {n > 0 ? (
         <div className={styles.rail}>
           <div className={styles.railTrack} style={{ transform: `translateX(-${i * 100}%)` }}>
             {shots.map((sh) => (
-              <figure className={styles.slide} key={sh.id}>
+              <figure
+                className={styles.slide}
+                key={sh.id}
+                style={{ background: bgColors[sh.id] || "#1d2c23" }}
+              >
                 {sh.src ? (
                   <img src={sh.src} alt={sh.caption || "Photo"} />
                 ) : (
