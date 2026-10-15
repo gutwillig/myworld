@@ -60,6 +60,7 @@ export function queueSave(world: World): void {
  */
 export async function saveWorldToServer(world: World): Promise<boolean> {
   const { user } = useAuthStore.getState();
+  console.log("[sync] saveWorldToServer called, slug:", world.slug, "buildings:", world.buildings.length, "user:", user?.email);
   if (!user) {
     console.warn("[sync] Cannot save: not authenticated");
     return false;
@@ -150,6 +151,7 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
  * Returns null if not found.
  */
 export async function loadWorldFromServer(slug: string): Promise<World | null> {
+  console.log("[sync] loadWorldFromServer called for slug:", slug);
   try {
     const { data, error } = await supabase
       .from("worlds")
@@ -163,9 +165,11 @@ export async function loadWorldFromServer(slug: string): Promise<World | null> {
     }
 
     if (!data) {
+      console.log("[sync] No world found in database for slug:", slug);
       return null;
     }
 
+    console.log("[sync] Found world in database:", data.slug, "owner_id:", data.owner_id);
     const dbWorld = data as DbWorld;
     return parseWorld(dbWorld.data);
   } catch (err) {

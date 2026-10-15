@@ -66,9 +66,11 @@ export default function WorldPage() {
   useEffect(() => {
     if (!worldSlug || localWorld || loadingSlug === worldSlug) return;
 
+    console.log("[WorldPage] Fetching world from server, slug:", worldSlug);
     setLoadingSlug(worldSlug);
     loadWorldFromServer(worldSlug).then((serverWorld) => {
       if (serverWorld) {
+        console.log("[WorldPage] Got world from server:", serverWorld.ownerName, "buildings:", serverWorld.buildings.length);
         // Add the server world to local state
         const { worlds, order } = useWorldStore.getState();
         useWorldStore.setState({
@@ -77,6 +79,8 @@ export default function WorldPage() {
         });
         // Visit it
         useWorldStore.getState().visit(serverWorld.id);
+      } else {
+        console.log("[WorldPage] No world found on server for slug:", worldSlug);
       }
       setLoadingSlug(null);
     });
