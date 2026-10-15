@@ -56,7 +56,8 @@ export default function WorldPage() {
   const isHome = currentId === homeId;
   const canEdit = useCanEdit();
   const user = useAuthStore((s) => s.user);
-  const [loadingSlug, setLoadingSlug] = useState<string | null>(null);
+  // Track fetch state: null = not started, "pending" = fetching, "done" = completed
+  const [fetchState, setFetchState] = useState<"pending" | "done" | null>(worldSlug ? "pending" : null);
 
   // Look up the world by slug - first locally, then we'll fetch from server if needed
   const localWorld = worldSlug ? getWorldBySlug(worlds, worldSlug) : null;
@@ -64,10 +65,14 @@ export default function WorldPage() {
 
   // Fetch world from server if not found locally
   useEffect(() => {
-    if (!worldSlug || localWorld || loadingSlug === worldSlug) return;
+    if (!worldSlug || localWorld) {
+      setFetchState(null);
+      return;
+    }
+    if (fetchState === "done") return;
 
     console.log("[WorldPage] Fetching world from server, slug:", worldSlug);
-    setLoadingSlug(worldSlug);
+    setFetchState("pending");
     loadWorldFromServer(worldSlug).then((serverWorld) => {
       if (serverWorld) {
         console.log("[WorldPage] Got world from server:", serverWorld.ownerName, "buildings:", serverWorld.buildings.length);
@@ -82,9 +87,9 @@ export default function WorldPage() {
       } else {
         console.log("[WorldPage] No world found on server for slug:", worldSlug);
       }
-      setLoadingSlug(null);
+      setFetchState("done");
     });
-  }, [worldSlug, localWorld, loadingSlug]);
+  }, [worldSlug, localWorld, fetchState]);
 
   const building = travel ? null : (world.buildings.find((b) => b.id === selectedId) ?? null);
   const panelOpen = !!building;
@@ -99,10 +104,10 @@ export default function WorldPage() {
   const firstVisit = useRef<boolean>(true);
   useLayoutEffect(() => {
     // If we're loading a world from server, wait for it
-    if (worldSlug && !localWorld && loadingSlug) return;
+    if (worldSlug && !localWorld && fetchState === "pending") return;
 
     // If slug was provided but world not found locally or on server, show error
-    if (worldSlug && !targetId && !loadingSlug) {
+    if (worldSlug && !targetId && fetchState === "done") {
       toast("There's no world by that name yet.");
       navigate("/", { replace: true });
       return;
@@ -120,7 +125,7 @@ export default function WorldPage() {
     const to = seaOffset(store.order.indexOf(targetId));
     const sail = Math.min(6, Math.max(2.8, routeLength(ferryRoute(from, to)) / 13));
     useFx.getState().startTravel(store.currentId, targetId, sail);
-  }, [targetId, travel, currentId, navigate, worldSlug, localWorld, loadingSlug]);
+  }, [targetId, travel, currentId, navigate, worldSlug, localWorld, fetchState]);
 
   // A short welcome after docking.
   const [arrived, setArrived] = useState<string | null>(null);
@@ -364,7 +369,7 @@ export default function WorldPage() {
 
       <VisitPreview />
 
-      {!started && <WorldChoice />}
+      {!started && !worldSlug && <WorldChoice />}
     </main>
   );
 }
