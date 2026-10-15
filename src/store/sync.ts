@@ -97,9 +97,32 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
         .eq("id", existing.id);
 
       if (error) {
-        console.error("[sync] Error updating world:", error);
-        toast.error("Failed to sync", { description: "Your changes are saved locally." });
-        return false;
+        // Handle slug conflicts - another user might have that slug
+        if (error.code === "23505") {
+          const uniqueSlug = `${world.slug}-${user.id.slice(0, 8)}`;
+          console.log("[sync] Slug conflict, trying unique slug:", uniqueSlug);
+          const { error: retryError } = await supabase
+            .from("worlds")
+            .update({
+              slug: uniqueSlug,
+              data: { ...data, world: { ...world, slug: uniqueSlug } },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+
+          if (retryError) {
+            console.error("[sync] Error updating world with unique slug:", retryError);
+            toast.error("Failed to sync", { description: "Your changes are saved locally." });
+            return false;
+          }
+          // Update local world with the unique slug
+          useWorldStore.getState().updateSlug(world.id, uniqueSlug);
+          toast("Slug updated", { description: `Your world is now at /w/${uniqueSlug}` });
+        } else {
+          console.error("[sync] Error updating world:", error);
+          toast.error("Failed to sync", { description: "Your changes are saved locally." });
+          return false;
+        }
       }
     } else {
       // Insert new world

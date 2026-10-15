@@ -236,6 +236,8 @@ type WorldState = WorldBook & {
   /** Puts a knocked-down building back (undo); takes a new lot if its old one is gone. */
   restoreBuilding: (b: Building) => void;
   setOwnerName: (name: string) => void;
+  /** Updates a world's slug (used when server assigns a unique slug). */
+  updateSlug: (worldId: string, newSlug: string) => void;
   replaceWorld: (world: World) => void;
   reset: () => void;
   /** Starts a new, empty world for a friend and returns it. */
@@ -411,6 +413,17 @@ export const useWorldStore = create<WorldState>()(
         const trimmed = name.trim().slice(0, 40);
         if (!trimmed) return;
         set(commit({ ...world, ownerName: trimmed, slug: uniqueWorldSlug(trimmed, get().worlds, world.id) }));
+      },
+
+      updateSlug: (worldId, newSlug) => {
+        const { worlds, currentId, homeId } = get();
+        const w = worlds[worldId];
+        if (!w) return;
+        const updated = { ...w, slug: newSlug };
+        set({
+          worlds: { ...worlds, [worldId]: updated },
+          ...(currentId === worldId ? { world: updated } : {}),
+        });
       },
 
       replaceWorld: (w) => set((s) => ({ ...swapCurrent(w), epoch: s.epoch + 1 })),
