@@ -11,6 +11,7 @@ import { BuildingPanel } from "@/panel/BuildingPanel";
 import { ShowcaseOverlay } from "@/showcase/ShowcaseOverlay";
 import type { Link, Status } from "@/store/types";
 import { getWorldBySlug, useWorldStore } from "@/store/world";
+import { loadWorldFromServer } from "@/store/sync";
 import { worldForResident } from "@/visit/residents";
 import { VisitPreview } from "@/visit/VisitPreview";
 import { useFx } from "@/world/fx";
@@ -55,7 +56,31 @@ export default function WorldPage() {
   const isHome = currentId === homeId;
   const canEdit = useCanEdit();
   const user = useAuthStore((s) => s.user);
-  const targetId = worldSlug ? getWorldBySlug(worlds, worldSlug)?.id : homeId;
+  const [loadingSlug, setLoadingSlug] = useState<string | null>(null);
+
+  // Look up the world by slug - first locally, then we'll fetch from server if needed
+  const localWorld = worldSlug ? getWorldBySlug(worlds, worldSlug) : null;
+  const targetId = worldSlug ? localWorld?.id : homeId;
+
+  // Fetch world from server if not found locally
+  useEffect(() => {
+    if (!worldSlug || localWorld || loadingSlug === worldSlug) return;
+
+    setLoadingSlug(worldSlug);
+    loadWorldFromServer(worldSlug).then((serverWorld) => {
+      if (serverWorld) {
+        // Add the server world to local state
+        const { worlds, order } = useWorldStore.getState();
+        useWorldStore.setState({
+          worlds: { ...worlds, [serverWorld.id]: serverWorld },
+          order: [...order, serverWorld.id],
+        });
+        // Visit it
+        useWorldStore.getState().visit(serverWorld.id);
+      }
+      setLoadingSlug(null);
+    });
+  }, [worldSlug, localWorld, loadingSlug]);
 
   const building = travel ? null : (world.buildings.find((b) => b.id === selectedId) ?? null);
   const panelOpen = !!building;
@@ -69,11 +94,17 @@ export default function WorldPage() {
   // The URL decides which world you're on. First load jumps straight there; after that, you sail.
   const firstVisit = useRef<boolean>(true);
   useLayoutEffect(() => {
-    if (!targetId) {
-      toast("There's no world by that name in this sea yet.");
+    // If we're loading a world from server, wait for it
+    if (worldSlug && !localWorld && loadingSlug) return;
+
+    // If slug was provided but world not found locally or on server, show error
+    if (worldSlug && !targetId && !loadingSlug) {
+      toast("There's no world by that name yet.");
       navigate("/", { replace: true });
       return;
     }
+
+    if (!targetId) return;
     const store = useWorldStore.getState();
     if (firstVisit.current) {
       firstVisit.current = false;
@@ -85,7 +116,7 @@ export default function WorldPage() {
     const to = seaOffset(store.order.indexOf(targetId));
     const sail = Math.min(6, Math.max(2.8, routeLength(ferryRoute(from, to)) / 13));
     useFx.getState().startTravel(store.currentId, targetId, sail);
-  }, [targetId, travel, currentId, navigate]);
+  }, [targetId, travel, currentId, navigate, worldSlug, localWorld, loadingSlug]);
 
   // A short welcome after docking.
   const [arrived, setArrived] = useState<string | null>(null);
