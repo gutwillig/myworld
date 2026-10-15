@@ -55,6 +55,7 @@ export const STYLES: Record<BuildingType, StyleDef[]> = {
     { id: "cafe", label: "Café", build: alt.storefrontCafe },
     { id: "market", label: "Market hall", build: alt.storefrontMarket },
   ],
+  arcade: [{ id: "neon", label: "Neon arcade", build: KIT.arcade }],
 };
 
 /** The style for a type, falling back to its first one for unknown or missing ids. */

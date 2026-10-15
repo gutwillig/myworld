@@ -40,6 +40,8 @@ const RING_GEO = new THREE.RingGeometry(0.93, 1.02, 48);
 RING_GEO.rotateX(-Math.PI / 2);
 const GLOW_GEO = new THREE.CircleGeometry(0.93, 48);
 GLOW_GEO.rotateX(-Math.PI / 2);
+/** Invisible box for reliable hover detection on complex building geometries. */
+const HOVER_BOX_GEO = new THREE.BoxGeometry(1, 1, 1);
 
 /** A building on its lot: rise, hover, drag to another lot, remodel, and knock-down. */
 export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, born, leaving, interactive }: Props) {
@@ -155,13 +157,15 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
 
   const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent]);
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent]);
+  const hoverBoxMat = useMemo(() => new THREE.MeshBasicMaterial({ visible: false }), []);
   const unhoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       ringMat.dispose();
       glowMat.dispose();
+      hoverBoxMat.dispose();
     },
-    [ringMat, glowMat],
+    [ringMat, glowMat, hoverBoxMat],
   );
   const ringRef = useRef<THREE.Mesh>(null);
 
@@ -302,7 +306,7 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
       if (useFx.getState().hoveredId === building.id) hover(null);
       if (!useFx.getState().moving) document.body.style.cursor = "";
       unhoverTimer.current = null;
-    }, 80);
+    }, 120);
   }, [building.id, hover]);
   const onClick = useCallback(
     (e: ThreeEvent<MouseEvent> | React.MouseEvent) => {
@@ -354,6 +358,8 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
         </mesh>
         <group ref={inner} onPointerDown={onDown} onPointerOver={onOver} onPointerOut={onOut} onClick={onClick}>
           <BuildingMesh type={building.type} style={building.style} accent={accent} faded={shown.past} onHeight={setHeight} />
+          {/* Invisible box for reliable hover detection on complex geometries */}
+          <mesh geometry={HOVER_BOX_GEO} material={hoverBoxMat} scale={[0.9, height, 0.9]} position={[0, height / 2, 0]} />
         </group>
         <Dust at={dustAt} color={shown.past ? "#E4D6B8" : "#EFE7D6"} />
         {signOn && !isMoving && (

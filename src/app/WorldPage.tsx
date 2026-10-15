@@ -208,10 +208,14 @@ export default function WorldPage() {
         <Brand />
         <div className={styles.topRight}>
           {canEdit && <KeepsakesMenu />}
-          <NeighborsMenu />
           <WorldMenu />
         </div>
       </header>
+
+      {/* Neighbors floats separately in the top-right corner */}
+      <div className={styles.neighborsFloat}>
+        <NeighborsMenu />
+      </div>
 
       <NewsStack hidden={panelOpen || !!travel || !!moving || visiting || !started} />
 

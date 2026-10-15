@@ -131,6 +131,13 @@
   gap: 10px;
 }
 
+.neighborsFloat {
+  position: absolute;
+  top: 80px;
+  right: 30px;
+  z-index: 30;
+}
+
 .tip {
   position: absolute;
   left: 50%;
