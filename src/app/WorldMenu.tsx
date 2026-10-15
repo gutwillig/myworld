@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, LogOut, RotateCcw, Sparkles } from "lucide-react";
+import { Link2, LogIn, LogOut, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -30,6 +30,17 @@ export function WorldMenu() {
     toast("Signed out", { description: "Your world is saved locally." });
   };
 
+  const onShare = async () => {
+    const world = useWorldStore.getState().world;
+    const url = `${window.location.origin}/w/${world.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied", { description: "Share it with anyone to show them your world." });
+    } catch {
+      toast(url, { description: "Copy this link to share your world." });
+    }
+  };
+
   const onWhatsNew = () => {
     window.open("https://myworld.build/changelog", "_blank");
   };
@@ -39,6 +50,10 @@ export function WorldMenu() {
       <nav className={styles.menu} aria-label="World menu">
         {user ? (
           <>
+            <button type="button" className={styles.menuBtnAuth} onClick={onShare}>
+              <Link2 size={17} strokeWidth={2} aria-hidden />
+              Share
+            </button>
             <button type="button" className={styles.menuBtn} onClick={onWhatsNew}>
               <Sparkles size={16} strokeWidth={2.1} aria-hidden />
               What&rsquo;s new
