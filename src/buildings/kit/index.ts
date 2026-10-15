@@ -1,4 +1,5 @@
 import type { BuildingType } from "@/store/types";
+import { arcade } from "./arcade";
 import { clinic } from "./clinic";
 import { clubhouse } from "./clubhouse";
 import type { KitBuilder } from "./common";
@@ -22,6 +23,7 @@ export const KIT: Record<BuildingType, KitBuilder> = {
   tower,
   clinic,
   storefront,
+  arcade,
 };
 
 /** Accent palette; each building picks one from its id so two offices differ. */
@@ -38,6 +40,7 @@ export const DEFAULT_ACCENT: Record<BuildingType, string> = {
   tower: "#6F8FC9",
   clinic: "#E05A4F",
   storefront: "#E5694F",
+  arcade: "#B86A8F",
 };
 
 export function accentFor(type: BuildingType, id: string): string {

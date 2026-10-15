@@ -14,7 +14,8 @@ export type BuildingType =
   | "exchange"
   | "tower"
   | "clinic"
-  | "storefront";
+  | "storefront"
+  | "arcade";
 
 export type Link = { label: string; url: string };
 
@@ -97,4 +98,5 @@ export const PICKABLE_TYPES: BuildingType[] = [
   "tower",
   "clinic",
   "storefront",
+  "arcade",
 ];

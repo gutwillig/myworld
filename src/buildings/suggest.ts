@@ -17,6 +17,7 @@ const RULES: Rule[] = [
   { type: "tower", keywords: ["corporate", "enterprise", "bank", "google", "amazon", "microsoft", "apple", "meta", "deloitte", "mckinsey", "goldman", "global", "group", "holdings"] },
   { type: "clinic", keywords: ["health", "dental", "medical", "care", "clinic", "therapy", "wellness", "bio"] },
   { type: "storefront", keywords: ["shop", "store", "brand", "product", "sell", "goods", "market", "coffee", "bakery", "merch"] },
+  { type: "arcade", keywords: ["game", "games", "gaming", "arcade", "play", "player", "esports", "twitch", "stream", "streamer", "xbox", "playstation", "nintendo", "steam", "indie", "pixel", "retro", "quest", "vr", "unity", "unreal", "godot"] },
 ];
 
 const DEFAULTS: BuildingType[] = ["office", "workshop", "storefront"];
@@ -32,6 +33,7 @@ const LABELS: Record<BuildingType, string> = {
   tower: "Tower",
   clinic: "Clinic",
   storefront: "Storefront",
+  arcade: "Arcade",
 };
 
 export const typeLabel = (t: BuildingType): string => LABELS[t];
