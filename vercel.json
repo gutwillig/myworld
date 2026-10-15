@@ -21,6 +21,10 @@
         }
       ],
       "destination": "/api/og-meta?world=:world"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
