@@ -328,6 +328,35 @@ export async function syncOnSignIn(): Promise<void> {
   }
 };
 
+/** Debug: Copy current world to a new slug. Call from console: copyWorldToSlug("alex") */
+(window as any).copyWorldToSlug = async (newSlug: string) => {
+  const { user } = useAuthStore.getState();
+  if (!user) {
+    console.log("[debug] Not signed in");
+    return;
+  }
+  const { world } = useWorldStore.getState();
+  console.log("[debug] Copying world to slug:", newSlug);
+
+  const data = {
+    format: "myworld" as const,
+    version: STORE_VERSION,
+    world: { ...world, slug: newSlug },
+  };
+
+  const { error } = await supabase.from("worlds").insert({
+    slug: newSlug,
+    owner_id: user.id,
+    data,
+  });
+
+  if (error) {
+    console.log("[debug] Error:", error.message);
+  } else {
+    console.log("[debug] Done! World copied to /w/" + newSlug);
+  }
+};
+
 export async function ensureFounderWorld(): Promise<void> {
   const { worlds, homeId } = useWorldStore.getState();
   const homeWorld = worlds[homeId];
