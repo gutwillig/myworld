@@ -281,6 +281,30 @@ export async function syncOnSignIn(): Promise<void> {
  * Fetches the founder's world from the server and adds it as a neighbor.
  * Called on app init so everyone has at least one connection.
  */
+/** Debug: Force save the current world to server immediately. Call from console: forceSaveWorld() */
+(window as any).forceSaveWorld = async () => {
+  const { user } = useAuthStore.getState();
+  if (!user) {
+    console.log("[debug] Not signed in - can't save");
+    return;
+  }
+  const { world } = useWorldStore.getState();
+  console.log("[debug] Force saving world:", world.slug, "buildings:", world.buildings.length);
+  const ok = await saveWorldToServer(world);
+  console.log("[debug] Save result:", ok);
+};
+
+/** Debug: Check if a world exists on server. Call from console: checkWorldOnServer("gus") */
+(window as any).checkWorldOnServer = async (slug: string) => {
+  console.log("[debug] Checking server for slug:", slug);
+  const world = await loadWorldFromServer(slug);
+  if (world) {
+    console.log("[debug] Found:", world.ownerName, "buildings:", world.buildings.length);
+  } else {
+    console.log("[debug] Not found on server");
+  }
+};
+
 export async function ensureFounderWorld(): Promise<void> {
   const { worlds, homeId } = useWorldStore.getState();
   const homeWorld = worlds[homeId];
