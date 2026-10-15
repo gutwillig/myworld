@@ -12,7 +12,6 @@ import { ShowcaseOverlay } from "@/showcase/ShowcaseOverlay";
 import type { Link, Status } from "@/store/types";
 import { getWorldBySlug, useWorldStore } from "@/store/world";
 import { worldForResident } from "@/visit/residents";
-import { NewsStack } from "@/updates/NewsStack";
 import { VisitPreview } from "@/visit/VisitPreview";
 import { useFx } from "@/world/fx";
 import { setLabelHost } from "@/world/SceneLabel";
@@ -217,8 +216,7 @@ export default function WorldPage() {
         <NeighborsMenu />
       </div>
 
-      <NewsStack hidden={panelOpen || !!travel || !!moving || visiting || !started} />
-
+      
       {/* Authenticated user visiting another world - show Fly home */}
       {user && !isHome && !travel && (
         <div className={neighbors.visiting} key={currentId}>
