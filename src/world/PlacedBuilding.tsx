@@ -155,6 +155,7 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
 
   const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent]);
   const glowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent]);
+  const unhoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       ringMat.dispose();
@@ -282,6 +283,11 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
   const onOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
+      // Cancel any pending unhover
+      if (unhoverTimer.current) {
+        clearTimeout(unhoverTimer.current);
+        unhoverTimer.current = null;
+      }
       const fx = useFx.getState();
       if (leaving || !interactive || fx.placement || fx.moving) return;
       hover(building.id);
@@ -290,8 +296,13 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
     [building.id, hover, leaving, interactive],
   );
   const onOut = useCallback(() => {
-    if (useFx.getState().hoveredId === building.id) hover(null);
-    if (!useFx.getState().moving) document.body.style.cursor = "";
+    // Debounce unhover to prevent flicker when moving between mesh and label
+    if (unhoverTimer.current) clearTimeout(unhoverTimer.current);
+    unhoverTimer.current = setTimeout(() => {
+      if (useFx.getState().hoveredId === building.id) hover(null);
+      if (!useFx.getState().moving) document.body.style.cursor = "";
+      unhoverTimer.current = null;
+    }, 80);
   }, [building.id, hover]);
   const onClick = useCallback(
     (e: ThreeEvent<MouseEvent> | React.MouseEvent) => {
@@ -304,6 +315,7 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
 
   useEffect(
     () => () => {
+      if (unhoverTimer.current) clearTimeout(unhoverTimer.current);
       if (useFx.getState().hoveredId === building.id) {
         useFx.getState().hover(null);
         document.body.style.cursor = "";
@@ -311,6 +323,15 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
     },
     [building.id],
   );
+
+  // Cancel pending unhover when sign is entered
+  const onSignEnter = useCallback(() => {
+    if (unhoverTimer.current) {
+      clearTimeout(unhoverTimer.current);
+      unhoverTimer.current = null;
+    }
+    if (interactive && !busy) hover(building.id);
+  }, [building.id, hover, interactive, busy]);
 
   const news = isFresh(building) ? latestUpdate(building) : undefined;
   const meta = news?.text ?? (building.oneLiner.trim() || `${styleOf(building.type, building.style).label} ${typeLabel(building.type).toLowerCase()}`);
@@ -347,8 +368,8 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
                 shown.past ? styles.signPast : "",
               ].join(" ")}
               tabIndex={interactive ? 0 : -1}
-              onPointerEnter={() => interactive && !busy && hover(building.id)}
-              onPointerLeave={() => interactive && hover(null)}
+              onPointerEnter={onSignEnter}
+              onPointerLeave={onOut}
               onClick={(e) => {
                 e.stopPropagation();
                 if (interactive && !busy) select(building.id);
