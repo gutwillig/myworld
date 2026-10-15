@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link2, LogIn, LogOut, RotateCcw, Sparkles } from "lucide-react";
+import { Link2, LogIn, LogOut, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -20,8 +20,12 @@ import styles from "./chrome.module.css";
 /** Sign in, What's new, Reset and Sign out — the core menu actions. */
 export function WorldMenu() {
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
+  const [renameOpen, setRenameOpen] = useState<boolean>(false);
+  const [newName, setNewName] = useState<string>("");
   const [authOpen, setAuthOpen] = useState<boolean>(false);
   const reset = useWorldStore((s) => s.reset);
+  const setOwnerName = useWorldStore((s) => s.setOwnerName);
+  const ownerName = useWorldStore((s) => s.world.ownerName);
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -54,9 +58,16 @@ export function WorldMenu() {
               <Link2 size={17} strokeWidth={2} aria-hidden />
               Share
             </button>
-            <button type="button" className={styles.menuBtn} onClick={onWhatsNew}>
-              <Sparkles size={16} strokeWidth={2.1} aria-hidden />
-              What&rsquo;s new
+            <button
+              type="button"
+              className={styles.menuBtn}
+              onClick={() => {
+                setNewName(ownerName);
+                setRenameOpen(true);
+              }}
+            >
+              <Pencil size={15} strokeWidth={2.1} aria-hidden />
+              Rename
             </button>
             <button type="button" className={styles.menuBtn} onClick={() => setConfirmReset(true)}>
               <RotateCcw size={16} strokeWidth={2.1} aria-hidden />
@@ -95,6 +106,41 @@ export function WorldMenu() {
               }}
             >
               Reset world
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <AlertDialogContent className={styles.dialog}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={styles.dialogTitle}>Rename your world</AlertDialogTitle>
+            <AlertDialogDescription>
+              This changes how your world appears to visitors.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            type="text"
+            className={styles.dialogInput}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Your name"
+            maxLength={40}
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className={styles.dialogCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={styles.dialogAction}
+              disabled={!newName.trim()}
+              onClick={() => {
+                const trimmed = newName.trim();
+                if (trimmed) {
+                  setOwnerName(trimmed);
+                  toast.success(`Now it's ${trimmed}'s world`);
+                }
+              }}
+            >
+              Save
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
