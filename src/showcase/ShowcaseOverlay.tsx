@@ -5,7 +5,7 @@ import { buildingAccent } from "@/buildings/kit";
 import { typeLabel } from "@/buildings/suggest";
 import type { Building, Showcase } from "@/store/types";
 import { UpdatesField } from "@/updates/UpdatesField";
-import { parseVideo, ytEmbedUrl, ytThumb } from "./media";
+import { parseVideo, vimeoEmbedUrl, vimeoThumb, ytEmbedUrl, ytThumb } from "./media";
 import styles from "./showcase.module.css";
 
 export type ShowcaseOverlayProps = {
@@ -95,10 +95,27 @@ export const ShowcaseOverlay = memo(function ShowcaseOverlay({
   );
 });
 
-/** Video template: YouTube poster + click-to-play, or a direct file with native controls. */
+/** Video template: YouTube/Vimeo poster + click-to-play, or a direct file with native controls. */
 function Reel({ tagline, videoUrl }: { tagline: string; videoUrl: string }) {
   const embed = useMemo(() => parseVideo(videoUrl), [videoUrl]);
   const [playing, setPlaying] = useState<boolean>(false);
+
+  const thumbUrl = embed
+    ? embed.kind === "youtube"
+      ? ytThumb(embed.id)
+      : embed.kind === "vimeo"
+        ? vimeoThumb(embed.id)
+        : null
+    : null;
+
+  const embedUrl = embed
+    ? embed.kind === "youtube"
+      ? ytEmbedUrl(embed.id)
+      : embed.kind === "vimeo"
+        ? vimeoEmbedUrl(embed.id, embed.hash)
+        : null
+    : null;
+
   return (
     <>
       <div className={styles.stage}>
@@ -109,7 +126,7 @@ function Reel({ tagline, videoUrl }: { tagline: string; videoUrl: string }) {
         ) : playing ? (
           <iframe
             className={styles.video}
-            src={ytEmbedUrl(embed.id)}
+            src={embedUrl!}
             title="Video"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
             allowFullScreen
@@ -118,7 +135,7 @@ function Reel({ tagline, videoUrl }: { tagline: string; videoUrl: string }) {
           <button
             type="button"
             className={styles.poster}
-            style={{ backgroundImage: `url(${ytThumb(embed.id)})` }}
+            style={{ backgroundImage: thumbUrl ? `url(${thumbUrl})` : undefined }}
             onClick={() => setPlaying(true)}
             aria-label="Play video"
           >

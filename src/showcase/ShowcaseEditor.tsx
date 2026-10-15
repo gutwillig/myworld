@@ -14,7 +14,7 @@ export type ShowcaseEditorProps = {
 };
 
 const TEMPLATES = [
-  { id: "reel", label: "Reel", Icon: Clapperboard, hint: "A video that plays right here — YouTube or an .mp4 link." },
+  { id: "reel", label: "Reel", Icon: Clapperboard, hint: "A video that plays right here — YouTube, Vimeo, or an .mp4 link." },
   { id: "studio", label: "Studio", Icon: Briefcase, hint: "A cover image, then your case studies." },
   { id: "scrapbook", label: "Scrapbook", Icon: Images, hint: "Photos with captions, one at a time." },
 ] as const;
@@ -78,16 +78,16 @@ function ReelFields({ showcase, onChange }: FieldsProps<Extract<Showcase, { temp
   return (
     <>
       <Tagline value={showcase.tagline} onCommit={(tagline) => onChange({ ...showcase, tagline })} />
-      <input
+      <textarea
         className={editor.textField}
-        aria-label="Video URL"
-        placeholder="Paste a YouTube link or .mp4 URL"
+        aria-label="Video URL or embed"
+        placeholder="Paste a YouTube link, Vimeo link, Vimeo embed code, or .mp4 URL"
         value={showcase.videoUrl}
-        inputMode="url"
+        rows={2}
         onChange={(e) => onChange({ ...showcase, videoUrl: e.target.value })}
       />
       {bad ? (
-        <p className={panel.fieldError}>That doesn't look like a YouTube or direct video link yet.</p>
+        <p className={panel.fieldError}>Paste a YouTube link, Vimeo link/embed, or direct video URL.</p>
       ) : (
         <p className={editor.fieldHint}>Visitors see the poster and press play without leaving the world.</p>
       )}

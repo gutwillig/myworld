@@ -1,17 +1,43 @@
 /** Media plumbing for showcases: video URL parsing and image file shrinking. */
 
-/** A video the viewer can play: a YouTube embed or a direct file. */
-export type Embed = { kind: "youtube"; id: string } | { kind: "file"; url: string };
+/** A video the viewer can play: YouTube, Vimeo, or a direct file. */
+export type Embed =
+  | { kind: "youtube"; id: string }
+  | { kind: "vimeo"; id: string; hash?: string }
+  | { kind: "file"; url: string };
 
-/** Accepts watch/share/embed/shorts YouTube URLs, or a direct .mp4/.webm/.mov URL. */
+/**
+ * Accepts:
+ * - YouTube watch/share/embed/shorts URLs
+ * - Vimeo URLs (vimeo.com/123 or player.vimeo.com/video/123?h=xxx)
+ * - Vimeo iframe embed codes (extracts the src)
+ * - Direct .mp4/.webm/.mov URLs
+ */
 export function parseVideo(raw: string): Embed | null {
-  const url = raw.trim();
-  if (!url) return null;
+  const input = raw.trim();
+  if (!input) return null;
+
+  // Extract src from iframe embed code if present
+  const iframeSrc = input.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  const url = iframeSrc ? iframeSrc[1] : input;
+
+  // YouTube
   const yt = url.match(
     /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{6,20})/i,
   );
   if (yt) return { kind: "youtube", id: yt[1] ?? "" };
+
+  // Vimeo player embed URL (player.vimeo.com/video/ID?h=HASH)
+  const vimeoPlayer = url.match(/player\.vimeo\.com\/video\/(\d+)(?:\?h=([a-z0-9]+))?/i);
+  if (vimeoPlayer) return { kind: "vimeo", id: vimeoPlayer[1], hash: vimeoPlayer[2] };
+
+  // Vimeo regular URL (vimeo.com/ID or vimeo.com/ID/HASH)
+  const vimeo = url.match(/vimeo\.com\/(\d+)(?:\/([a-z0-9]+))?/i);
+  if (vimeo) return { kind: "vimeo", id: vimeo[1], hash: vimeo[2] };
+
+  // Direct video file
   if (/^https:\/\/.*\.(mp4|webm|mov)(\?.*)?$/i.test(url)) return { kind: "file", url };
+
   return null;
 }
 
@@ -19,6 +45,11 @@ export const ytThumb = (id: string): string => `https://i.ytimg.com/vi/${id}/hqd
 
 export const ytEmbedUrl = (id: string): string =>
   `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+
+export const vimeoThumb = (id: string): string => `https://vumbnail.com/${id}.jpg`;
+
+export const vimeoEmbedUrl = (id: string, hash?: string): string =>
+  `https://player.vimeo.com/video/${id}${hash ? `?h=${hash}&` : "?"}autoplay=1&title=0&byline=0&portrait=0`;
 
 /**
  * Reads an image file and returns a resized JPEG data URL (long edge capped), small
