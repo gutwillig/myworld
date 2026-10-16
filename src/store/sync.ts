@@ -37,8 +37,16 @@ export function queueSave(world: World): void {
   const { homeId } = useWorldStore.getState();
 
   // Only sync the home world for authenticated users
-  if (!user || world.id !== homeId) return;
+  if (!user) {
+    console.log("[sync] Skipping save: not signed in");
+    return;
+  }
+  if (world.id !== homeId) {
+    console.log("[sync] Skipping save: not home world");
+    return;
+  }
 
+  console.log("[sync] Queueing save for:", world.slug, "buildings:", world.buildings.length);
   pendingWorld = world;
 
   if (saveTimer) {
