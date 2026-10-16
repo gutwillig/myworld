@@ -191,11 +191,14 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
 export async function loadWorldFromServer(slug: string): Promise<World | null> {
   console.log("[sync] loadWorldFromServer called for slug:", slug);
   try {
+    console.log("[sync] Querying Supabase for slug:", slug);
     const { data, error } = await supabase
       .from("worlds")
       .select("*")
       .eq("slug", slug)
       .maybeSingle();
+
+    console.log("[sync] Supabase response - error:", error, "data:", data ? "exists" : "null");
 
     if (error) {
       console.error("[sync] Error loading world:", error);
@@ -209,7 +212,9 @@ export async function loadWorldFromServer(slug: string): Promise<World | null> {
 
     console.log("[sync] Found world in database:", data.slug, "owner_id:", data.owner_id);
     const dbWorld = data as DbWorld;
-    return parseWorld(dbWorld.data);
+    const world = parseWorld(dbWorld.data);
+    console.log("[sync] Parsed world:", world.ownerName, "buildings:", world.buildings.length);
+    return world;
   } catch (err) {
     console.error("[sync] Unexpected error loading world:", err);
     return null;
