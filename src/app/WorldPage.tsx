@@ -29,7 +29,6 @@ const TIP_KEY = "myworld.tip.move";
 
 /** The world route: full-bleed scene, brand, corner menu, prompt dock and the building panel. */
 export default function WorldPage() {
-  console.log("[WorldPage] Component rendering");
   const selectedId = useFx((s) => s.selectedId);
   const select = useFx((s) => s.select);
   const world = useWorldStore((s) => s.world);
@@ -64,37 +63,23 @@ export default function WorldPage() {
   const localWorld = worldSlug ? getWorldBySlug(worlds, worldSlug) : null;
   const targetId = worldSlug ? localWorld?.id : homeId;
 
-  console.log("[WorldPage] State check - worldSlug:", worldSlug, "localWorld:", !!localWorld, "localWorld?.buildings:", localWorld?.buildings?.length, "fetchState:", fetchState);
-  console.log("[WorldPage] IDs - currentId:", currentId, "homeId:", homeId, "isHome:", isHome, "world.buildings:", world.buildings.length);
-
   // Fetch world from server if not found locally
   useEffect(() => {
-    console.log("[WorldPage] useEffect triggered - worldSlug:", worldSlug, "localWorld:", !!localWorld, "fetchState:", fetchState);
     if (!worldSlug || localWorld) {
-      console.log("[WorldPage] Skipping fetch - no slug or local world exists");
       setFetchState(null);
       return;
     }
-    if (fetchState === "done") {
-      console.log("[WorldPage] Skipping fetch - already done");
-      return;
-    }
+    if (fetchState === "done") return;
 
-    console.log("[WorldPage] Fetching world from server, slug:", worldSlug);
     setFetchState("pending");
     loadWorldFromServer(worldSlug).then((serverWorld) => {
       if (serverWorld) {
-        console.log("[WorldPage] Got world from server:", serverWorld.ownerName, "buildings:", serverWorld.buildings.length);
-        // Add the server world to local state
         const { worlds, order } = useWorldStore.getState();
         useWorldStore.setState({
           worlds: { ...worlds, [serverWorld.id]: serverWorld },
           order: [...order, serverWorld.id],
         });
-        // Visit it
         useWorldStore.getState().visit(serverWorld.id);
-      } else {
-        console.log("[WorldPage] No world found on server for slug:", worldSlug);
       }
       setFetchState("done");
     });

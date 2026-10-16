@@ -37,16 +37,8 @@ export function queueSave(world: World): void {
   const { homeId } = useWorldStore.getState();
 
   // Only sync the home world for authenticated users
-  if (!user) {
-    console.log("[sync] Skipping save: not signed in");
-    return;
-  }
-  if (world.id !== homeId) {
-    console.log("[sync] Skipping save: not home world");
-    return;
-  }
+  if (!user || world.id !== homeId) return;
 
-  console.log("[sync] Queueing save for:", world.slug, "buildings:", world.buildings.length);
   pendingWorld = world;
 
   if (saveTimer) {
@@ -68,16 +60,7 @@ export function queueSave(world: World): void {
  */
 export async function saveWorldToServer(world: World): Promise<boolean> {
   const { user } = useAuthStore.getState();
-  console.log("[sync] saveWorldToServer called");
-  console.log("[sync] - slug:", world.slug);
-  console.log("[sync] - buildings:", world.buildings.length);
-  console.log("[sync] - building names:", world.buildings.map(b => b.name).join(", "));
-  console.log("[sync] - user:", user?.email);
-  console.log("[sync] - user id:", user?.id);
-  if (!user) {
-    console.warn("[sync] Cannot save: not authenticated");
-    return false;
-  }
+  if (!user) return false;
 
   try {
     const data = {
@@ -169,12 +152,8 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
       }
     }
 
-    console.log("[sync] World saved to server successfully!");
-    console.log("[sync] - saved slug:", world.slug);
-    console.log("[sync] - saved buildings:", world.buildings.length);
-
     // Capture OG image in the background (don't await)
-    maybeCaptureOg(world).catch((err) => console.warn("[sync] OG capture failed:", err));
+    maybeCaptureOg(world).catch(() => {});
 
     return true;
   } catch (err) {
@@ -189,34 +168,20 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
  * Returns null if not found.
  */
 export async function loadWorldFromServer(slug: string): Promise<World | null> {
-  console.log("[sync] loadWorldFromServer called for slug:", slug);
   try {
-    console.log("[sync] Querying Supabase for slug:", slug);
     const { data, error } = await supabase
       .from("worlds")
       .select("*")
       .eq("slug", slug)
       .maybeSingle();
 
-    console.log("[sync] Supabase response - error:", error, "data:", data ? "exists" : "null");
+    if (error) return null;
 
-    if (error) {
-      console.error("[sync] Error loading world:", error);
-      return null;
-    }
+    if (!data) return null;
 
-    if (!data) {
-      console.log("[sync] No world found in database for slug:", slug);
-      return null;
-    }
-
-    console.log("[sync] Found world in database:", data.slug, "owner_id:", data.owner_id);
     const dbWorld = data as DbWorld;
-    const world = parseWorld(dbWorld.data);
-    console.log("[sync] Parsed world:", world.ownerName, "buildings:", world.buildings.length);
-    return world;
-  } catch (err) {
-    console.error("[sync] Unexpected error loading world:", err);
+    return parseWorld(dbWorld.data);
+  } catch {
     return null;
   }
 }
@@ -238,19 +203,11 @@ export async function loadMyWorld(): Promise<World | null> {
       .eq("owner_id", user.id)
       .maybeSingle();
 
-    if (error) {
-      console.error("[sync] Error loading my world:", error);
-      return null;
-    }
-
-    if (!data) {
-      return null;
-    }
+    if (error || !data) return null;
 
     const dbWorld = data as DbWorld;
     return parseWorld(dbWorld.data);
-  } catch (err) {
-    console.error("[sync] Unexpected error loading my world:", err);
+  } catch {
     return null;
   }
 }
@@ -324,59 +281,6 @@ export async function syncOnSignIn(): Promise<void> {
  * Fetches the founder's world from the server and adds it as a neighbor.
  * Called on app init so everyone has at least one connection.
  */
-/** Debug: Force save the current world to server immediately. Call from console: forceSaveWorld() */
-(window as any).forceSaveWorld = async () => {
-  const { user } = useAuthStore.getState();
-  if (!user) {
-    console.log("[debug] Not signed in - can't save");
-    return;
-  }
-  const { world } = useWorldStore.getState();
-  console.log("[debug] Force saving world:", world.slug, "buildings:", world.buildings.length);
-  const ok = await saveWorldToServer(world);
-  console.log("[debug] Save result:", ok);
-};
-
-/** Debug: Check if a world exists on server. Call from console: checkWorldOnServer("gus") */
-(window as any).checkWorldOnServer = async (slug: string) => {
-  console.log("[debug] Checking server for slug:", slug);
-  const world = await loadWorldFromServer(slug);
-  if (world) {
-    console.log("[debug] Found:", world.ownerName, "buildings:", world.buildings.length);
-  } else {
-    console.log("[debug] Not found on server");
-  }
-};
-
-/** Debug: Copy current world to a new slug. Call from console: copyWorldToSlug("alex") */
-(window as any).copyWorldToSlug = async (newSlug: string) => {
-  const { user } = useAuthStore.getState();
-  if (!user) {
-    console.log("[debug] Not signed in");
-    return;
-  }
-  const { world } = useWorldStore.getState();
-  console.log("[debug] Copying world to slug:", newSlug);
-
-  const data = {
-    format: "myworld" as const,
-    version: STORE_VERSION,
-    world: { ...world, slug: newSlug },
-  };
-
-  const { error } = await supabase.from("worlds").insert({
-    slug: newSlug,
-    owner_id: user.id,
-    data,
-  });
-
-  if (error) {
-    console.log("[debug] Error:", error.message);
-  } else {
-    console.log("[debug] Done! World copied to /w/" + newSlug);
-  }
-};
-
 export async function ensureFounderWorld(): Promise<void> {
   const { worlds, homeId } = useWorldStore.getState();
   const homeWorld = worlds[homeId];
@@ -394,10 +298,7 @@ export async function ensureFounderWorld(): Promise<void> {
 
   // Fetch founder's world from server
   const founderWorld = await loadWorldFromServer(FOUNDER_SLUG);
-  if (!founderWorld) {
-    console.log("[sync] Founder world not yet available on server");
-    return;
-  }
+  if (!founderWorld) return;
 
   // Add founder's world to local book as a neighbor
   const { order } = useWorldStore.getState();
@@ -405,6 +306,4 @@ export async function ensureFounderWorld(): Promise<void> {
     worlds: { ...useWorldStore.getState().worlds, [founderWorld.id]: founderWorld },
     order: [...order, founderWorld.id],
   });
-
-  console.log("[sync] Added founder's world as neighbor");
 }
