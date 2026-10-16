@@ -63,13 +63,20 @@ export default function WorldPage() {
   const localWorld = worldSlug ? getWorldBySlug(worlds, worldSlug) : null;
   const targetId = worldSlug ? localWorld?.id : homeId;
 
+  console.log("[WorldPage] State check - worldSlug:", worldSlug, "localWorld:", !!localWorld, "fetchState:", fetchState);
+
   // Fetch world from server if not found locally
   useEffect(() => {
+    console.log("[WorldPage] useEffect triggered - worldSlug:", worldSlug, "localWorld:", !!localWorld, "fetchState:", fetchState);
     if (!worldSlug || localWorld) {
+      console.log("[WorldPage] Skipping fetch - no slug or local world exists");
       setFetchState(null);
       return;
     }
-    if (fetchState === "done") return;
+    if (fetchState === "done") {
+      console.log("[WorldPage] Skipping fetch - already done");
+      return;
+    }
 
     console.log("[WorldPage] Fetching world from server, slug:", worldSlug);
     setFetchState("pending");
