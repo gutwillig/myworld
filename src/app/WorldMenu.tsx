@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link2, LogIn, LogOut, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { Cloud, Link2, LogIn, LogOut, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from "@/store/auth";
 import { useFx } from "@/world/fx";
 import { useWorldStore } from "@/store/world";
+import { saveWorldToServer } from "@/store/sync";
 import { AuthDialog } from "./AuthDialog";
 import styles from "./chrome.module.css";
 
@@ -23,6 +24,7 @@ export function WorldMenu() {
   const [renameOpen, setRenameOpen] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>("");
   const [authOpen, setAuthOpen] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
   const reset = useWorldStore((s) => s.reset);
   const setOwnerName = useWorldStore((s) => s.setOwnerName);
   const ownerName = useWorldStore((s) => s.world.ownerName);
@@ -34,8 +36,32 @@ export function WorldMenu() {
     toast("Signed out", { description: "Your world is saved locally." });
   };
 
-  const onShare = async () => {
+  const onSave = async () => {
+    if (saving) return;
+    setSaving(true);
     const world = useWorldStore.getState().world;
+    const ok = await saveWorldToServer(world);
+    setSaving(false);
+    if (ok) {
+      toast.success("Saved to cloud", { description: "Your world is now available to anyone with the link." });
+    } else {
+      toast.error("Save failed", { description: "Check your connection and try again." });
+    }
+    return ok;
+  };
+
+  const onShare = async () => {
+    // Save first to ensure it's on the server
+    const world = useWorldStore.getState().world;
+    setSaving(true);
+    const saved = await saveWorldToServer(world);
+    setSaving(false);
+
+    if (!saved) {
+      toast.error("Couldn't save", { description: "Your world needs to be saved before sharing." });
+      return;
+    }
+
     const url = `${window.location.origin}/w/${world.slug}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -54,9 +80,13 @@ export function WorldMenu() {
       <nav className={styles.menu} aria-label="World menu">
         {user ? (
           <>
-            <button type="button" className={styles.menuBtnAuth} onClick={onShare}>
+            <button type="button" className={styles.menuBtnAuth} onClick={onShare} disabled={saving}>
               <Link2 size={17} strokeWidth={2} aria-hidden />
-              Share
+              {saving ? "Saving…" : "Share"}
+            </button>
+            <button type="button" className={styles.menuBtn} onClick={onSave} disabled={saving}>
+              <Cloud size={16} strokeWidth={2.1} aria-hidden />
+              {saving ? "Saving…" : "Save"}
             </button>
             <button
               type="button"

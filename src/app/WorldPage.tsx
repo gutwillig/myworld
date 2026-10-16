@@ -76,7 +76,6 @@ export default function WorldPage() {
     loadWorldFromServer(worldSlug).then((serverWorld) => {
       if (serverWorld) {
         console.log("[WorldPage] Got world from server:", serverWorld.ownerName, "buildings:", serverWorld.buildings.length);
-        console.log("[WorldPage] Building names:", serverWorld.buildings.map(b => b.name).join(", "));
         // Add the server world to local state
         const { worlds, order } = useWorldStore.getState();
         useWorldStore.setState({
@@ -371,11 +370,6 @@ export default function WorldPage() {
       <VisitPreview />
 
       {!started && !worldSlug && <WorldChoice />}
-
-      {/* Debug: show loading state */}
-      <div style={{ position: 'fixed', bottom: 10, left: 10, background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '6px 10px', borderRadius: 4, fontSize: 11, zIndex: 9999, maxWidth: '90vw' }}>
-        Buildings: {world.buildings.length} | Slug: {world.slug} | Fetch: {fetchState ?? 'none'} | Current: {currentId?.slice(0,6)}
-      </div>
     </main>
   );
 }
