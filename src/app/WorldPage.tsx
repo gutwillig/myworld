@@ -64,7 +64,8 @@ export default function WorldPage() {
   const localWorld = worldSlug ? getWorldBySlug(worlds, worldSlug) : null;
   const targetId = worldSlug ? localWorld?.id : homeId;
 
-  console.log("[WorldPage] State check - worldSlug:", worldSlug, "localWorld:", !!localWorld, "fetchState:", fetchState);
+  console.log("[WorldPage] State check - worldSlug:", worldSlug, "localWorld:", !!localWorld, "localWorld?.buildings:", localWorld?.buildings?.length, "fetchState:", fetchState);
+  console.log("[WorldPage] IDs - currentId:", currentId, "homeId:", homeId, "isHome:", isHome, "world.buildings:", world.buildings.length);
 
   // Fetch world from server if not found locally
   useEffect(() => {
