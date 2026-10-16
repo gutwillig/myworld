@@ -5,7 +5,7 @@ import { parseWorld, STORE_VERSION, useWorldStore } from "./world";
 import { useAuthStore } from "./auth";
 
 /** The founder's world slug - everyone gets this as their first neighbor. */
-export const FOUNDER_SLUG = "gus";
+export const FOUNDER_SLUG = "alex";
 
 // Import OG capture lazily to avoid circular dependency
 let captureOgImpl: ((world: World) => Promise<void>) | null = null;
