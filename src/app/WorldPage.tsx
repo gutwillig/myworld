@@ -371,6 +371,11 @@ export default function WorldPage() {
       <VisitPreview />
 
       {!started && !worldSlug && <WorldChoice />}
+
+      {/* Debug: show building count */}
+      <div style={{ position: 'fixed', bottom: 10, left: 10, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 11, zIndex: 9999 }}>
+        Buildings: {world.buildings.length}
+      </div>
     </main>
   );
 }
