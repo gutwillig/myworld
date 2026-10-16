@@ -244,8 +244,8 @@ type WorldState = WorldBook & {
   createWorld: (ownerName: string) => World;
   /** Makes a world the one on screen. Travel animation lives in the renderer. */
   visit: (id: string) => void;
-  /** First-run: skin the home world with the chosen terrain and seed its keepsakes. */
-  chooseHome: (terrain: Terrain) => void;
+  /** First-run: skin the home world with the chosen terrain, set the owner name, and seed keepsakes. */
+  chooseHome: (terrain: Terrain, ownerName?: string) => void;
   /** Re-skins the home world's town (beach ↔ mountain), keeping buildings and keepsakes. */
   setHomeTerrain: (terrain: Terrain) => void;
   /**
@@ -463,11 +463,13 @@ export const useWorldStore = create<WorldState>()(
         });
       },
 
-      chooseHome: (terrain) => {
+      chooseHome: (terrain, ownerName) => {
         const { worlds, homeId } = get();
         const home = worlds[homeId];
         if (!home) return;
-        const world = withRoads({ ...home, terrain, keepsakes: starterKeepsakes(terrain) });
+        const name = ownerName?.trim().slice(0, 40) || home.ownerName;
+        const slug = ownerName ? uniqueWorldSlug(name, worlds, home.id) : home.slug;
+        const world = withRoads({ ...home, terrain, ownerName: name, slug, keepsakes: starterKeepsakes(terrain) });
         set({
           worlds: { ...worlds, [homeId]: world },
           world,

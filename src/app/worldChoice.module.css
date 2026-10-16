@@ -138,6 +138,63 @@
   color: var(--ink-faint);
 }
 
+.nameForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.nameInput {
+  width: 100%;
+  height: 56px;
+  padding: 0 20px;
+  border: 2px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 500 18px/1 var(--font-ui);
+  text-align: center;
+  transition: border-color 180ms ease;
+}
+
+.nameInput:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.nameInput::placeholder {
+  color: var(--ink-faint);
+}
+
+.nameSubmit {
+  width: 100%;
+  height: 52px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 700 15px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.nameSubmit:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+
+.nameSubmit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.nameSubmit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 560px) {
   .cards {
     flex-direction: column;

@@ -50,21 +50,71 @@ const CHOICES: { terrain: Terrain; name: string; blurb: string; art: () => React
 ];
 
 /**
- * First-run screen: pick the town your world becomes. Everything else (dock, ferry,
- * neighbors) stays the same sea; this only skins the island.
+ * First-run screen: pick the town your world becomes, then enter your name.
+ * Everything else (dock, ferry, neighbors) stays the same sea; this only skins the island.
  */
 export function WorldChoice() {
   const chooseHome = useWorldStore((s) => s.chooseHome);
-  const [leaving, setLeaving] = useState<Terrain | null>(null);
+  const [step, setStep] = useState<"terrain" | "name">("terrain");
+  const [selectedTerrain, setSelectedTerrain] = useState<Terrain | null>(null);
+  const [name, setName] = useState("");
+  const [leaving, setLeaving] = useState(false);
 
-  const pick = (terrain: Terrain) => {
-    if (leaving) return;
-    setLeaving(terrain);
-    window.setTimeout(() => chooseHome(terrain), 380);
+  const pickTerrain = (terrain: Terrain) => {
+    if (selectedTerrain) return;
+    setSelectedTerrain(terrain);
+    window.setTimeout(() => setStep("name"), 380);
   };
 
+  const finish = () => {
+    if (!selectedTerrain || leaving) return;
+    setLeaving(true);
+    window.setTimeout(() => chooseHome(selectedTerrain, name.trim() || undefined), 380);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && name.trim()) {
+      finish();
+    }
+  };
+
+  if (step === "name") {
+    return (
+      <div className={`${styles.root} ${leaving ? styles.rootLeaving : ""}`} role="dialog" aria-label="Name your world">
+        <Brand />
+        <div className={styles.head}>
+          <p className={styles.eyebrow}>Almost there</p>
+          <h1 className={styles.title}>What's your name?</h1>
+          <p className={styles.sub}>
+            This is how your world will appear to visitors — "{name.trim() || "Your name"}'s world"
+          </p>
+        </div>
+        <div className={styles.nameForm}>
+          <input
+            type="text"
+            className={styles.nameInput}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter your name"
+            maxLength={40}
+            autoFocus
+          />
+          <button
+            type="button"
+            className={styles.nameSubmit}
+            onClick={finish}
+            disabled={!name.trim()}
+          >
+            {leaving ? "Building…" : "Start building"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`${styles.root} ${leaving ? styles.rootLeaving : ""}`} role="dialog" aria-label="Choose your world">
+    <div className={`${styles.root} ${selectedTerrain ? styles.rootLeaving : ""}`} role="dialog" aria-label="Choose your world">
       <Brand />
       <div className={styles.head}>
         <p className={styles.eyebrow}>Welcome to myworld</p>
@@ -75,12 +125,12 @@ export function WorldChoice() {
       </div>
       <div className={styles.cards}>
         {CHOICES.map(({ terrain, name, blurb, art: Art }) => (
-          <button key={terrain} type="button" className={styles.card} onClick={() => pick(terrain)}>
+          <button key={terrain} type="button" className={styles.card} onClick={() => pickTerrain(terrain)}>
             <Art />
             <span className={styles.body}>
               <span className={styles.name}>{name}</span>
               <span className={styles.blurb}>{blurb}</span>
-              <span className={styles.pick}>{leaving === terrain ? "Taking off…" : "Build here"}</span>
+              <span className={styles.pick}>{selectedTerrain === terrain ? "Taking off…" : "Build here"}</span>
             </span>
           </button>
         ))}
