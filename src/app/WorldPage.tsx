@@ -29,6 +29,7 @@ const TIP_KEY = "myworld.tip.move";
 
 /** The world route: full-bleed scene, brand, corner menu, prompt dock and the building panel. */
 export default function WorldPage() {
+  console.log("[WorldPage] Component rendering");
   const selectedId = useFx((s) => s.selectedId);
   const select = useFx((s) => s.select);
   const world = useWorldStore((s) => s.world);

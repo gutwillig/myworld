@@ -58,10 +58,8 @@ const App = () => (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthInitializer>
         <Routes>
-          <Route element={<WorldPage />}>
-            <Route index element={null} />
-            <Route path="w/:world" element={null} />
-          </Route>
+          <Route path="/" element={<WorldPage />} />
+          <Route path="/w/:world" element={<WorldPage />} />
           <Route path="/w/:world/:building" element={<FlatBuildingPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
