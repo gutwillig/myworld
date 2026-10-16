@@ -101,6 +101,7 @@ function OldTownMarker({ world }: { world: World }) {
 
 function Buildings({ world, epoch, interactive }: { world: World; epoch: number; interactive: boolean }) {
   const entries = usePresence(world.buildings, keyOf, epoch, TIMING.leave * 1000 + 700);
+  console.log("[Buildings] Rendering", entries.length, "buildings:", entries.map(e => e.item.name).join(", "));
   return (
     <group>
       {entries.map((e) => (

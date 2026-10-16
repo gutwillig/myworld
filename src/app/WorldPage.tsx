@@ -76,6 +76,7 @@ export default function WorldPage() {
     loadWorldFromServer(worldSlug).then((serverWorld) => {
       if (serverWorld) {
         console.log("[WorldPage] Got world from server:", serverWorld.ownerName, "buildings:", serverWorld.buildings.length);
+        console.log("[WorldPage] Building names:", serverWorld.buildings.map(b => b.name).join(", "));
         // Add the server world to local state
         const { worlds, order } = useWorldStore.getState();
         useWorldStore.setState({
