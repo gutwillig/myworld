@@ -68,7 +68,12 @@ export function queueSave(world: World): void {
  */
 export async function saveWorldToServer(world: World): Promise<boolean> {
   const { user } = useAuthStore.getState();
-  console.log("[sync] saveWorldToServer called, slug:", world.slug, "buildings:", world.buildings.length, "user:", user?.email);
+  console.log("[sync] saveWorldToServer called");
+  console.log("[sync] - slug:", world.slug);
+  console.log("[sync] - buildings:", world.buildings.length);
+  console.log("[sync] - building names:", world.buildings.map(b => b.name).join(", "));
+  console.log("[sync] - user:", user?.email);
+  console.log("[sync] - user id:", user?.id);
   if (!user) {
     console.warn("[sync] Cannot save: not authenticated");
     return false;
@@ -164,7 +169,9 @@ export async function saveWorldToServer(world: World): Promise<boolean> {
       }
     }
 
-    console.log("[sync] World saved to server");
+    console.log("[sync] World saved to server successfully!");
+    console.log("[sync] - saved slug:", world.slug);
+    console.log("[sync] - saved buildings:", world.buildings.length);
 
     // Capture OG image in the background (don't await)
     maybeCaptureOg(world).catch((err) => console.warn("[sync] OG capture failed:", err));
