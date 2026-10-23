@@ -29,10 +29,14 @@ const isKid = (id: string) => !!useWorldStore.getState().world.buildings.find((b
 function candidateLots(): Lot[] {
   const fx = useFx.getState();
   const w = useWorldStore.getState().world;
+  const hasPast = w.buildings.some((b) => b.status === "past");
   if (fx.moving) {
     const others = w.buildings.filter((b) => b.id !== fx.moving?.id);
+    const active = freeLots(w.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const }));
+    // Only include Old Town lots if there are already past buildings there
+    if (!hasPast) return active;
     return [
-      ...freeLots(w.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const })),
+      ...active,
       ...freeLots(w.terrain, others, "oldTown").map((hex) => ({ hex, zone: "oldTown" as const })),
     ];
   }
@@ -271,25 +275,32 @@ export function LotMarkers({ world }: { world: World }) {
   const placingDistrict = useFx((s) => s.placement?.district);
   const movingId = useFx((s) => s.moving?.id ?? null);
   const carrying = useFx((s) => !!s.keepsakeMove);
+  const hasPast = world.buildings.some((b) => b.status === "past");
   const lots = useMemo<Lot[]>(() => {
     // Carrying a keepsake: show the lots it has to stay clear of.
     if (carrying) {
+      const active = freeLots(world.terrain, world.buildings, "active").map((hex) => ({ hex, zone: "active" as const }));
+      // Only show Old Town lots if there are already past buildings there
+      if (!hasPast) return active;
       return [
-        ...freeLots(world.terrain, world.buildings, "active").map((hex) => ({ hex, zone: "active" as const })),
+        ...active,
         ...freeLots(world.terrain, world.buildings, "oldTown").map((hex) => ({ hex, zone: "oldTown" as const })),
       ];
     }
     if (movingId && world.buildings.find((b) => b.id === movingId)?.parentId) return [];
     if (movingId) {
       const others = world.buildings.filter((b) => b.id !== movingId);
+      const active = freeLots(world.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const }));
+      // Only show Old Town lots if there are already past buildings there
+      if (!hasPast) return active;
       return [
-        ...freeLots(world.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const })),
+        ...active,
         ...freeLots(world.terrain, others, "oldTown").map((hex) => ({ hex, zone: "oldTown" as const })),
       ];
     }
     if (placing) return freeLots(world.terrain, world.buildings, placingDistrict ?? "active").map((hex) => ({ hex, zone: "active" as const }));
     return [];
-  }, [world, placing, placingDistrict, movingId, carrying]);
+  }, [world, placing, placingDistrict, movingId, carrying, hasPast]);
   return (
     <>
       {lots.map((l, i) => (
