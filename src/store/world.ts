@@ -6,7 +6,8 @@ import { hexEquals, hexToWorld, type Hex } from "@/grid/hex";
 import { HOME, computeRoads, districtOf, hubsFor, lotZone, pickActiveLot, pickOldTownLot } from "@/grid/layout";
 import { MAX_KEEPSAKES, NOTE_MAX, parseKeepsakes } from "@/keepsakes/catalog";
 import { UPDATES_KEPT, UPDATE_MAX } from "@/updates/news";
-import type { Building, BuildingType, BuildingUpdate, Keepsake, KeepsakeKind, KeepsakePin, Showcase, Status, Terrain, World } from "./types";
+import type { Building, BuildingType, BuildingUpdate, Keepsake, KeepsakeKind, KeepsakePin, Showcase, Status, Terrain, TownCenter, World } from "./types";
+import { PITCH_MAX, TOWN_CENTERS } from "./types";
 
 export const STORAGE_KEY = "worlds.v1";
 export const STORE_VERSION = 5;
@@ -101,6 +102,8 @@ export function parseWorld(raw: unknown): World {
     buildings,
     roads: [],
     keepsakes: parseKeepsakes(obj.keepsakes),
+    center: TOWN_CENTERS.includes(obj.center as TownCenter) ? obj.center : undefined,
+    pitch: typeof obj.pitch === "string" ? obj.pitch.slice(0, PITCH_MAX) : undefined,
   };
   world.roads = computeRoads(world);
   return world;
@@ -191,9 +194,17 @@ function withBuildings(
   return withRoads(w);
 }
 
+const ROSS_PITCH =
+  "I run Ross & Co., a tiny strategy shop that helps founders turn messy ideas into decks investors actually read. Nights and weekends I'm building a coffee subscription and coaching Little League.";
+
 /** Ross's starter world: placeholder buildings to rename, so travel has somewhere to land. */
 function seedRoss(): World {
-  return withRossNews(withBuildings({ ...createEmptyWorld("Ross"), keepsakes: rossKeepsakes() }, [
+  return withRossNews(withBuildings({
+    ...createEmptyWorld("Ross"),
+    keepsakes: rossKeepsakes(),
+    center: "clock",
+    pitch: ROSS_PITCH,
+  }, [
     { name: "Ross & Co.", type: "office", oneLiner: "The day job.", district: "gig" },
     { name: "Film Club", type: "theater", oneLiner: "Sunday screenings.", showcase: demoShowcase("Film Club"), district: "fun" },
     { name: "Pickup Soccer", type: "clubhouse", district: "fun" },
@@ -281,6 +292,10 @@ type WorldState = WorldBook & {
   /** Puts a knocked-down building back (undo); takes a new lot if its old one is gone. */
   restoreBuilding: (b: Building) => void;
   setOwnerName: (name: string) => void;
+  /** Swaps the landmark in the middle of your town. */
+  setTownCenter: (center: TownCenter) => void;
+  /** Your elevator pitch, shown to visitors. */
+  setPitch: (pitch: string) => void;
   replaceWorld: (world: World) => void;
   reset: () => void;
   /** Starts a new, empty world for a friend and returns it. */
@@ -582,6 +597,19 @@ export const useWorldStore = create<WorldState>()(
         set(commit({ ...world, ownerName: trimmed, slug: uniqueWorldSlug(trimmed, get().worlds, world.id) }));
       },
 
+      setTownCenter: (center) => {
+        const { world } = get();
+        if ((world.center ?? "park") === center) return;
+        set(commit({ ...world, center }));
+      },
+
+      setPitch: (pitch) => {
+        const { world } = get();
+        const clean = pitch.trim().slice(0, PITCH_MAX);
+        if ((world.pitch ?? "") === clean) return;
+        set(commit({ ...world, pitch: clean }));
+      },
+
       replaceWorld: (w) => set((s) => ({ ...swapCurrent(w), epoch: s.epoch + 1 })),
 
       reset: () =>
@@ -737,7 +765,12 @@ export const useWorldStore = create<WorldState>()(
         for (const id of p.order) {
           const w = p.worlds[id];
           // Ross's town gets its starter news once, so neighbors have something to read.
-          if (w) worlds[id] = withRoads(w.ownerName === "Ross" && id !== p.homeId && !w.buildings.some((b) => b.updates?.length) ? withRossNews(w) : w);
+          if (!w) continue;
+          const ross = w.ownerName === "Ross" && id !== p.homeId;
+          let next = ross && !w.buildings.some((b) => b.updates?.length) ? withRossNews(w) : w;
+          // Older saves: give Ross his landmark and pitch so visiting shows them off.
+          if (ross && next.pitch === undefined) next = { ...next, center: next.center ?? "clock", pitch: ROSS_PITCH };
+          worlds[id] = withRoads(next);
         }
         const order = p.order.filter((id) => worlds[id]);
         // Existing worlds predate the choice screen, so they've already started.

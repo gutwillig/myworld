@@ -1,16 +1,14 @@
 import { Suspense, memo, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { BuildingMesh } from "@/buildings/BuildingMesh";
 import { hasGrounds } from "@/buildings/grounds";
-import { DEFAULT_ACCENT } from "@/buildings/kit";
 import { seaOffset } from "@/grid/archipelago";
 import { hexToWorld } from "@/grid/hex";
 import { OLD_TOWN_ANCHOR, hubsFor } from "@/grid/layout";
 import { SPOT_MAX, isGig } from "@/grid/plaza";
 import { Plazas } from "./Plaza";
 import { Peaks } from "./Peaks";
-import { groundHeight, terrainProfile } from "@/grid/terrainProfile";
+import { terrainProfile } from "@/grid/terrainProfile";
 import type { Building, World } from "@/store/types";
 import { useWorldStore } from "@/store/world";
 import { CameraRig } from "./Camera";
@@ -23,6 +21,7 @@ import { Roads } from "./Roads";
 import { SceneLabel } from "./SceneLabel";
 import { Hubs } from "./Hubs";
 import { Realms } from "./Realms";
+import { TownCenter } from "./TownCenter";
 import { Terrain } from "./Terrain";
 import { Keepsakes, keepsakeClearings, useKeepsakeSpots } from "./Keepsakes";
 import { type Clearing, Trees } from "./Trees";
@@ -69,19 +68,6 @@ function Lights() {
     </>
   );
 }
-
-const Home = memo(function Home({ ownerName }: { ownerName: string }) {
-  return (
-    <group position={[0, groundHeight(terrainProfile("beach"), 0, 0), 0]} scale={1.4}>
-      <BuildingMesh type="house" accent={DEFAULT_ACCENT.house} />
-      <SceneLabel position={[0, 1.42, 0]} zIndex={20}>
-        <div className={styles.homeSign} style={{ cursor: "default" }}>
-          {`${ownerName}\u2019s place`}
-        </div>
-      </SceneLabel>
-    </group>
-  );
-});
 
 function Buildings({ world, epoch, interactive }: { world: World; epoch: number; interactive: boolean }) {
   const entries = usePresence(world.buildings, keyOf, epoch, TIMING.leave * 1000 + 700);
@@ -166,7 +152,7 @@ const Island = memo(function Island({ worldId, index }: { worldId: string; index
         interactive={isCurrent && !traveling}
         editable={isHome}
       />
-      <Home ownerName={world.ownerName} />
+      <TownCenter world={world} isHome={isHome} isCurrent={isCurrent} interactive={isCurrent && !traveling} />
       <Realms world={world} interactive={isCurrent && !traveling} />
       <Plazas world={world} interactive={isCurrent && !traveling} />
       <Hubs world={world} interactive={isCurrent && !traveling} />

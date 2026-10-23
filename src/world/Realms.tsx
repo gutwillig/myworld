@@ -284,9 +284,10 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
   const hitMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }), []);
 
   const group = useRef<THREE.Group>(null);
-  // No realm lit by default; highlight only on hover or tap.
-  const litRef = useRef<number>(-1);
-  const [lit, setLitState] = useState<number>(-1);
+  // One realm is always lit: the busiest to start, then whichever the pointer last rested in.
+  const initial = realms.reduce((best, r, i) => (r.count > realms[best].count ? i : best), 0);
+  const litRef = useRef<number>(initial);
+  const [lit, setLitState] = useState<number>(initial);
   const [hidden, setHidden] = useState<boolean>(false);
 
   const live = () => {
@@ -294,7 +295,7 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
     return interactive && !fx.plazaId && !fx.placement && !fx.moving && !fx.travel;
   };
   const setLit = (k: number) => {
-    if (litRef.current === k) return;
+    if (k < 0 || litRef.current === k) return;
     litRef.current = k;
     setLitState(k);
   };
@@ -331,7 +332,6 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
           if (e.intersections[0]?.object === e.object) document.body.style.cursor = k >= 0 ? "zoom-in" : "";
         }}
         onPointerOut={() => {
-          setLit(-1);
           if (!useFx.getState().moving) document.body.style.cursor = "";
         }}
         onClick={(e) => {

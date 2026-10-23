@@ -93,7 +93,15 @@ export type World = {
   roads: Road[];
   /** In the order they were added; earlier ones keep their spot when more arrive. */
   keepsakes?: Keepsake[];
+  /** The landmark in the middle of town (defaults to the park). */
+  center?: TownCenter;
+  /** The owner's elevator pitch, shown to visitors above the town centre. */
+  pitch?: string;
 };
+
+export type TownCenter = "park" | "rotary" | "arch" | "clock" | "lighthouse";
+export const TOWN_CENTERS: TownCenter[] = ["park", "rotary", "arch", "clock", "lighthouse"];
+export const PITCH_MAX = 280;
 
 export const PICKABLE_TYPES: BuildingType[] = [
   "office",
