@@ -88,8 +88,8 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
     const realms: Realm[] = [];
     const sites: Site[] = [];
     (["gig", "side", "fun", "old"] as RealmKind[]).forEach((kind) => {
-      // Side hustles and For fun only claim land once something stands there.
-      if ((kind === "side" || kind === "fun") && groups[kind].length === 0) return;
+      // Side hustles, For fun, and Old Town only claim land once something stands there.
+      if ((kind === "side" || kind === "fun" || kind === "old") && groups[kind].length === 0) return;
       const i = realms.length;
       const count = groups[kind].length + (kind === "gig" ? Math.ceil(clients / 3) : 0);
       const a = hexToWorld(anchors[kind]);
