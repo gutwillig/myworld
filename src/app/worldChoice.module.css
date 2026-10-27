@@ -138,6 +138,59 @@
   color: var(--ink-faint);
 }
 
+.nameForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.nameInput {
+  width: 100%;
+  padding: 16px 20px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  background: white;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  text-align: center;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.nameInput:focus {
+  outline: none;
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px rgba(212, 120, 94, 0.15);
+}
+
+.nameInput::placeholder {
+  color: var(--ink-faint);
+}
+
+.nameButton {
+  padding: 14px 32px;
+  border: none;
+  border-radius: 999px;
+  background: var(--coral);
+  font: 700 15px/1 var(--font-ui);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.nameButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 120, 94, 0.35);
+}
+
+.nameButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 560px) {
   .cards {
     flex-direction: column;

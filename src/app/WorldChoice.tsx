@@ -50,12 +50,22 @@ const CHOICES: { terrain: Terrain; name: string; blurb: string; art: () => React
 ];
 
 /**
- * First-run screen: pick the town your world becomes. Everything else (dock, ferry,
- * neighbors) stays the same sea; this only skins the island.
+ * First-run screen: enter your name, then pick the town your world becomes.
  */
 export function WorldChoice() {
   const chooseHome = useWorldStore((s) => s.chooseHome);
+  const setOwnerName = useWorldStore((s) => s.setOwnerName);
+  const [step, setStep] = useState<"name" | "terrain">("name");
+  const [name, setName] = useState("");
   const [leaving, setLeaving] = useState<Terrain | null>(null);
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setOwnerName(trimmed);
+    setStep("terrain");
+  };
 
   const pick = (terrain: Terrain) => {
     if (leaving) return;
@@ -63,22 +73,51 @@ export function WorldChoice() {
     window.setTimeout(() => chooseHome(terrain), 380);
   };
 
+  // Step 1: Enter your name
+  if (step === "name") {
+    return (
+      <div className={styles.root} role="dialog" aria-label="Enter your name">
+        <Brand />
+        <div className={styles.head}>
+          <p className={styles.eyebrow}>Welcome to myworld</p>
+          <h1 className={styles.title}>What's your name?</h1>
+          <p className={styles.sub}>This is how your world will be known to visitors.</p>
+        </div>
+        <form onSubmit={handleNameSubmit} className={styles.nameForm}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className={styles.nameInput}
+            autoFocus
+            maxLength={40}
+          />
+          <button type="submit" className={styles.nameButton} disabled={!name.trim()}>
+            Continue
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // Step 2: Pick terrain
   return (
     <div className={`${styles.root} ${leaving ? styles.rootLeaving : ""}`} role="dialog" aria-label="Choose your world">
       <Brand />
       <div className={styles.head}>
-        <p className={styles.eyebrow}>Welcome to myworld</p>
-        <h1 className={styles.title}>First, choose your world.</h1>
+        <p className={styles.eyebrow}>{name}'s world</p>
+        <h1 className={styles.title}>Now, choose your town.</h1>
         <p className={styles.sub}>
-          Every world has a floatplane — it lands on water or the airstrip, so neighbors can fly over either way. Pick where you build.
+          Every world has a floatplane — it lands on water or the airstrip, so neighbors can fly over either way.
         </p>
       </div>
       <div className={styles.cards}>
-        {CHOICES.map(({ terrain, name, blurb, art: Art }) => (
+        {CHOICES.map(({ terrain, name: terrainName, blurb, art: Art }) => (
           <button key={terrain} type="button" className={styles.card} onClick={() => pick(terrain)}>
             <Art />
             <span className={styles.body}>
-              <span className={styles.name}>{name}</span>
+              <span className={styles.name}>{terrainName}</span>
               <span className={styles.blurb}>{blurb}</span>
               <span className={styles.pick}>{leaving === terrain ? "Taking off…" : "Build here"}</span>
             </span>

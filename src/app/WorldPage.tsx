@@ -17,11 +17,15 @@ import plazaStyles from "./plaza.module.css";
 import { VisitPreview } from "@/visit/VisitPreview";
 import { useFx } from "@/world/fx";
 import { setLabelHost } from "@/world/SceneLabel";
+import { useWorldSync } from "@/lib/useWorldSync";
+import { loadWorldBySlug } from "@/lib/worldSync";
 import { Brand } from "./Brand";
 import { WorldChoice } from "./WorldChoice";
 import { NeighborsMenu, worldPath } from "./NeighborsMenu";
 import neighbors from "./neighbors.module.css";
 import { WorldMenu } from "./WorldMenu";
+import { UserMenu } from "./UserMenu";
+import { VisitorCta } from "./VisitorCta";
 import styles from "./world.module.css";
 
 const WorldScene = lazy(() => import("@/world/WorldScene"));
@@ -29,6 +33,9 @@ const TIP_KEY = "myworld.tip.move";
 
 /** The world route: full-bleed scene, brand, corner menu, prompt dock and the building panel. */
 export default function WorldPage() {
+  // Sync authenticated user's world to Supabase
+  useWorldSync();
+
   const selectedId = useFx((s) => s.selectedId);
   const select = useFx((s) => s.select);
   const world = useWorldStore((s) => s.world);
@@ -42,6 +49,7 @@ export default function WorldPage() {
   const [picking, setPicking] = useState<boolean>(false);
   /** The showcase opens on click; the owner can still reach the panel via Edit. */
   const [editOverride, setEditOverride] = useState<boolean>(false);
+  const [loadingPublicWorld, setLoadingPublicWorld] = useState(false);
   const navigate = useNavigate();
   const { world: worldSlug } = useParams();
   const worlds = useWorldStore((s) => s.worlds);
@@ -67,11 +75,46 @@ export default function WorldPage() {
     setEditOverride(false);
   }, [selectedId]);
 
+  // Load public world from Supabase if not found locally
+  const loadAttempted = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!worldSlug || targetId || loadingPublicWorld || loadAttempted.current.has(worldSlug)) return;
+
+    loadAttempted.current.add(worldSlug);
+    setLoadingPublicWorld(true);
+
+    loadWorldBySlug(worldSlug).then(({ world: publicWorld, error }) => {
+      setLoadingPublicWorld(false);
+      if (error) {
+        console.error("[WorldPage] Failed to load public world:", error);
+        toast("Couldn't load that world right now.");
+        navigate("/", { replace: true });
+        return;
+      }
+      if (!publicWorld) {
+        toast("There's no world by that name yet.");
+        navigate("/", { replace: true });
+        return;
+      }
+      // Add the public world to local store and navigate to it
+      const store = useWorldStore.getState();
+      const newWorlds = { ...store.worlds, [publicWorld.id]: publicWorld };
+      const newOrder = store.order.includes(publicWorld.id) ? store.order : [...store.order, publicWorld.id];
+      useWorldStore.setState({ worlds: newWorlds, order: newOrder });
+      store.visit(publicWorld.id);
+    });
+  }, [worldSlug, targetId, loadingPublicWorld, navigate]);
+
   // The URL decides which world you're on. First load jumps straight there; after that, you sail.
   const firstVisit = useRef<boolean>(true);
   useLayoutEffect(() => {
+    // If we're loading a public world, wait for it
+    if (loadingPublicWorld) return;
+    if (!targetId && worldSlug) {
+      // Will be handled by the public world loader above
+      return;
+    }
     if (!targetId) {
-      toast("There's no world by that name in this sea yet.");
       navigate("/", { replace: true });
       return;
     }
@@ -212,6 +255,16 @@ export default function WorldPage() {
     });
   }, [building, knockDown, restoreBuilding, select]);
 
+  // Show loading state while fetching public world
+  if (loadingPublicWorld) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.atmosphere} aria-hidden />
+        <div className={styles.loading}>Finding that world…</div>
+      </main>
+    );
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.atmosphere} aria-hidden />
@@ -232,6 +285,7 @@ export default function WorldPage() {
           {isHome && <KeepsakesMenu />}
           <NeighborsMenu />
           <WorldMenu />
+          <UserMenu />
         </div>
       </header>
 
@@ -354,6 +408,12 @@ export default function WorldPage() {
       <VisitPreview />
 
       {!started && <WorldChoice />}
+
+      {/* Show CTA for visitors viewing someone else's world */}
+      <VisitorCta
+        ownerName={world.ownerName}
+        hidden={isHome || panelOpen || !!travel || !!arrived || !started}
+      />
     </main>
   );
 }

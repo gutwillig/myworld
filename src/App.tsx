@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/lib/auth";
 import WorldPage from "./app/WorldPage";
 import FlatBuildingPage from "./flat/FlatBuildingPage";
 import NotFound from "./pages/NotFound";
@@ -8,7 +9,7 @@ import NotFound from "./pages/NotFound";
 const KitPage = lazy(() => import("./app/KitPage"));
 
 const App = () => (
-  <>
+  <AuthProvider>
     <Toaster
       position="top-center"
       toastOptions={{
@@ -39,7 +40,7 @@ const App = () => (
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
-  </>
+  </AuthProvider>
 );
 
 export default App;

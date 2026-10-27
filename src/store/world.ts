@@ -612,13 +612,38 @@ export const useWorldStore = create<WorldState>()(
 
       replaceWorld: (w) => set((s) => ({ ...swapCurrent(w), epoch: s.epoch + 1 })),
 
-      reset: () =>
-        set((s) => ({
-          ...swapCurrent(createEmptyWorld(s.world.ownerName)),
-          epoch: s.epoch + 1,
-          // Resetting home starts over from the choice screen.
-          started: s.currentId === s.homeId ? false : s.started,
-        })),
+      reset: () => {
+        // Force localStorage sync to ensure state is persisted before reset
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            // Parse to check for corruption; if parsing fails, clear it
+            JSON.parse(raw);
+          }
+        } catch {
+          console.warn("[reset] Clearing corrupted localStorage");
+          localStorage.removeItem(STORAGE_KEY);
+        }
+        set((s) => {
+          // Use state from callback directly instead of get() to avoid race conditions
+          const { worlds, order, homeId, currentId, epoch, started } = s;
+          const next = createEmptyWorld(s.world.ownerName, s.world.terrain);
+          const rest = { ...worlds };
+          delete rest[currentId];
+          const id = rest[next.id] ? nanoid(10) : next.id;
+          const world = withRoads({ ...next, id, slug: uniqueWorldSlug(next.slug || next.ownerName, rest) });
+          return {
+            world,
+            worlds: { ...rest, [id]: world },
+            order: order.map((x) => (x === currentId ? id : x)),
+            homeId: homeId === currentId ? id : homeId,
+            currentId: id,
+            epoch: epoch + 1,
+            // Resetting home starts over from the choice screen.
+            started: currentId === homeId ? false : started,
+          };
+        });
+      },
 
       createWorld: (ownerName) => {
         const { worlds, order } = get();
@@ -716,8 +741,33 @@ export const useWorldStore = create<WorldState>()(
     {
       name: STORAGE_KEY,
       version: STORE_VERSION,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name) => localStorage.getItem(name),
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch (e) {
+            // QuotaExceededError - localStorage is full (likely due to large base64 images)
+            console.error("[persist] Failed to save state:", e);
+            // Try to clear and save again
+            try {
+              localStorage.removeItem(name);
+              localStorage.setItem(name, value);
+            } catch {
+              console.error("[persist] Still cannot save after clearing. State may be too large.");
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      })),
       partialize: (s) => ({ version: s.version, worlds: s.worlds, order: s.order, homeId: s.homeId, started: s.started }),
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error("[persist] Failed to rehydrate state:", error);
+        } else if (state) {
+          console.log("[persist] State rehydrated, worlds:", Object.keys(state.worlds ?? {}));
+        }
+      },
       migrate: (persisted, fromVersion) => {
         try {
           let p = persisted as {
