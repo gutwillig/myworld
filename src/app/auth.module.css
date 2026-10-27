@@ -301,18 +301,20 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: var(--accent, #d4785e);
+  background: var(--coral, #e5694f);
   color: white;
   border: none;
   border-radius: 20px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(229, 105, 79, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 .signInButton:hover {
+  background: var(--coral-deep, #c9503a);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(212, 120, 94, 0.3);
+  box-shadow: 0 4px 12px rgba(229, 105, 79, 0.35);
 }
