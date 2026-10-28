@@ -69,11 +69,16 @@ type FxState = {
   /** Pixels moved during the current pointer drag; used to swallow clicks after orbiting. */
   dragDistance: number;
   select: (id: string | null) => void;
+  /** Hover a building; null unhovers with a debounce to prevent flashing when moving between building and sign. */
   hover: (id: string | null) => void;
   markLeaving: (id: string, kind: LeaveKind) => void;
   clearLeaving: (id: string) => void;
   setDragDistance: (d: number) => void;
 };
+
+/** Debounce timer for unhover to prevent sign flashing. */
+let unhoverTimer: ReturnType<typeof setTimeout> | null = null;
+const UNHOVER_DELAY = 120;
 
 export const useFx = create<FxState>()((set) => ({
   visit: null,
@@ -126,7 +131,23 @@ export const useFx = create<FxState>()((set) => ({
   select: (id) => set({ selectedId: id }),
   plazaId: null,
   setPlaza: (id) => set({ plazaId: id, hoveredId: null }),
-  hover: (id) => set({ hoveredId: id }),
+  hover: (id) => {
+    // Cancel any pending unhover
+    if (unhoverTimer) {
+      clearTimeout(unhoverTimer);
+      unhoverTimer = null;
+    }
+    if (id !== null) {
+      // Immediate hover
+      set({ hoveredId: id });
+    } else {
+      // Debounced unhover to prevent flashing when pointer moves between building and sign
+      unhoverTimer = setTimeout(() => {
+        unhoverTimer = null;
+        set({ hoveredId: null });
+      }, UNHOVER_DELAY);
+    }
+  },
   markLeaving: (id, kind) => set((s) => ({ leaving: { ...s.leaving, [id]: { kind, at: performance.now() } } })),
   clearLeaving: (id) =>
     set((s) => {
