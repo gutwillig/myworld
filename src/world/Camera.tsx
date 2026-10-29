@@ -97,11 +97,14 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const next = THREE.MathUtils.clamp(s.zoomTarget * Math.exp(-e.deltaY * 0.0012), ZOOM_MIN, ZOOM_MAX);
-      // Zooming out to minimum while in a plaza exits the plaza
-      if (next <= ZOOM_MIN && s.zoomTarget > ZOOM_MIN && e.deltaY > 0) {
+      // Zooming out near minimum while in a plaza exits the plaza (threshold 0.95 for earlier trigger)
+      const exitThreshold = ZOOM_MIN + 0.15;
+      if (next <= exitThreshold && e.deltaY > 0) {
         const fx = useFx.getState();
         if (fx.plazaId && !fx.placement && !fx.moving) {
           fx.setPlaza(null);
+          s.zoomTarget = 1; // Reset zoom to normal when exiting
+          return;
         }
       }
       s.zoomTarget = next;
