@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Download, RotateCcw, Upload } from "lucide-react";
+import { useState } from "react";
+import { Link, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -12,71 +12,39 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useFx } from "@/world/fx";
-import { exportWorld, parseWorld, useWorldStore } from "@/store/world";
+import { useWorldStore } from "@/store/world";
 import styles from "./chrome.module.css";
 
-/** Export, Import and Reset — the entire persistence story, in one quiet corner pill. */
+/** Share and Reset — the main world actions in one quiet corner pill. */
 export function WorldMenu() {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
-  const replaceWorld = useWorldStore((s) => s.replaceWorld);
   const reset = useWorldStore((s) => s.reset);
+  const world = useWorldStore((s) => s.world);
 
-  const onExport = () => {
-    const world = useWorldStore.getState().world;
-    const blob = new Blob([exportWorld(world)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${world.slug || "world"}.world.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.success("World exported", { description: `${world.buildings.length} buildings saved to a file.` });
-  };
+  const onShare = async () => {
+    const slug = world.slug || world.ownerName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const shareUrl = `${window.location.origin}/w/${slug}`;
 
-  const onFile = async (file: File) => {
     try {
-      const text = await file.text();
-      const world = parseWorld(JSON.parse(text));
-      useFx.getState().select(null);
-      replaceWorld(world);
-      toast.success(`Welcome to ${world.ownerName}'s world`, { description: `${world.buildings.length} buildings imported.` });
-    } catch (err) {
-      console.warn("[import] failed", err instanceof Error ? err.message : err);
-      toast.error("Couldn't import that file", {
-        description: err instanceof Error && err.message.includes("myworld") ? err.message : "Pick a .json file exported from myworld.",
-      });
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied!", { description: `Share ${shareUrl} with friends.` });
+    } catch {
+      // Fallback for browsers that don't support clipboard API
+      toast.info("Share your world", { description: shareUrl });
     }
   };
 
   return (
     <>
-      <nav className={styles.menu} aria-label="World file">
-        <button type="button" className={styles.menuBtn} onClick={onExport}>
-          <Upload size={17} strokeWidth={2} aria-hidden />
-          Export
-        </button>
-        <button type="button" className={styles.menuBtn} onClick={() => fileRef.current?.click()}>
-          <Download size={17} strokeWidth={2} aria-hidden />
-          Import
+      <nav className={styles.menu} aria-label="World actions">
+        <button type="button" className={styles.menuBtn} onClick={onShare}>
+          <Link size={16} strokeWidth={2.2} aria-hidden />
+          Share
         </button>
         <button type="button" className={styles.menuBtn} onClick={() => setConfirmReset(true)}>
           <RotateCcw size={16} strokeWidth={2.1} aria-hidden />
           Reset
         </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onFile(f);
-            e.target.value = "";
-          }}
-        />
       </nav>
       <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
         <AlertDialogContent className={styles.dialog}>
