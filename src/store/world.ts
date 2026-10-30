@@ -365,7 +365,7 @@ function syncDistricts(world: World): Building[] {
   return out;
 }
 
-function withRoads(world: World): World {
+export function withRoads(world: World): World {
   const buildings = syncPlazas(syncDistricts(world));
   return { ...world, buildings, roads: computeRoads({ ...world, buildings }) };
 }

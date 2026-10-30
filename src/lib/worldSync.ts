@@ -1,5 +1,6 @@
 import { supabase, type DbWorld, type DbBuilding, type DbBuildingCta, type DbBuildingResident } from "./supabase";
 import type { World, Building, Keepsake } from "@/store/types";
+import { withRoads } from "@/store/world";
 
 /** Convert local World to database format */
 function worldToDb(world: World, ownerId: string): Omit<DbWorld, "created_at" | "updated_at"> {
@@ -87,6 +88,7 @@ function dbToBuilding(
     grounds: db.grounds,
     accent: db.accent_color,
     showcase,
+    updates: [], // TODO: load from building_updates table
     category: db.category as Building["category"],
     parentId: db.parent_id,
     spot: db.spot_x !== undefined && db.spot_z !== undefined ? { x: db.spot_x, z: db.spot_z } : undefined,
@@ -208,7 +210,7 @@ export async function loadWorldBySlug(slug: string): Promise<{ world: World | nu
       return dbToBuilding(b, links, residents);
     });
 
-    const world = dbToWorld(worldData, buildings, []);
+    const world = withRoads(dbToWorld(worldData, buildings, []));
     return { world, error: null };
   } catch (err) {
     console.error("[worldSync] Failed to load world:", err);
