@@ -25,6 +25,17 @@ const DISTANCE = 40;
 /** World units that should fit across the shorter visible dimension at zoom 1. */
 const FIT_W = 22.5;
 const FIT_H = 16;
+/** Tour framing: a low, near head-on look at the spotlit building. */
+const TOUR_ELEVATION = 14 * DEG;
+/** Docked tour panel width + its gap; the building centres in the space left of it. */
+const TOUR_PANEL_PX = 504;
+/** How far below screen centre the building sits (fraction of height), leaving room for its sign. */
+const TOUR_DROP = 0.14;
+/** On phones the bottom sheet covers the lower half, so the building sits above centre instead. */
+const TOUR_DROP_PHONE = -0.1;
+/** Extra zoom on a client building vs. the HQ itself. */
+const TOUR_ZOOM_CLIENT = 1.9;
+const TOUR_ZOOM_HQ = 0.9;
 
 /**
  * The whole camera: fixed orthographic angle, scroll zoom 0.8–1.6, drag orbit ±30° that springs back,
@@ -55,6 +66,11 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
     plazaX: 0,
     plazaZ: 0,
     plazaZoom: PLAZA_ZOOM,
+    /** 0..1 spring: 1 while the tour spotlights a building. */
+    tour: 0,
+    tourZoom: 1,
+    /** 0..1 spring: 1 while a plaza sub-building is spotlighted, driving the low tour angle. */
+    tourLow: 0,
   });
 
   useEffect(() => {
@@ -144,7 +160,7 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
     const az = AZIMUTH + s.orbit + sweep;
 
     // Target: home, lifted so the town sits above the text box, nudged 10% toward the selection.
-    const { selectedId, travel, plazaId } = useFx.getState();
+    const { selectedId, travel, plazaId, tourId } = useFx.getState();
     const store = useWorldStore.getState();
     const sel = selectedId ? store.world.buildings.find((b) => b.id === selectedId) : undefined;
     const lean = { x: Math.sin(az) * 1.0, z: Math.cos(az) * 1.0 };
@@ -162,6 +178,15 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
     // Slow, weighted ease in and out (~1.2s), no bounce.
     s.plaza += ((gig ? 1 : 0) - s.plaza) * Math.min(1, dt * 3);
     if (s.plaza < 0.001) s.plaza = 0;
+    // Tour: spring toward a low, close look at the spotlit building (not while a page is open or at sea).
+    const tourB = tourId && !sel && !travel ? store.world.buildings.find((b) => b.id === tourId) : undefined;
+    const tourParent = tourB?.parentId ? store.world.buildings.find((b) => b.id === tourB.parentId) : undefined;
+    const wantZoom = !tourB ? 1 : tourParent ? TOUR_ZOOM_CLIENT : tourB.id === gig?.gig?.id ? TOUR_ZOOM_HQ : 1;
+    s.tour += ((tourB ? 1 : 0) - s.tour) * Math.min(1, dt * 3);
+    if (s.tour < 0.001) s.tour = 0;
+    s.tourZoom += (wantZoom - s.tourZoom) * Math.min(1, dt * 3);
+    s.tourLow += ((tourB?.parentId ? 1 : 0) - s.tourLow) * Math.min(1, dt * 3);
+    const elev = THREE.MathUtils.lerp(ELEVATION, TOUR_ELEVATION, easeInOutCubic(s.tourLow));
     if (!travel) s.travelFrom = null;
     if (travel) {
       // Up from wherever we were (home, or a peek) to sea level, follow the boat, then down onto the destination.
@@ -189,6 +214,23 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
       goal.x = THREE.MathUtils.lerp(goal.x, here.x + s.plazaX + lean.x * 0.12, p);
       goal.z = THREE.MathUtils.lerp(goal.z, here.z + s.plazaZ + lean.z * 0.12, p);
       s.focus += (0 - s.focus) * Math.min(1, dt * 5);
+      if (tourB) {
+        // Centre the building in the space beside the panel (above the sheet on phones), a little low.
+        const t = easeInOutCubic(s.tour);
+        const w = hexToWorld(tourB.hex);
+        // Plaza clients stand at a spot around their lot's centre.
+        if (tourB.parentId && tourB.spot) {
+          w.x += tourB.spot.x;
+          w.z += tourB.spot.z;
+        }
+        const px = Math.max(1e-3, cam.zoom);
+        const phone = size.width < 768;
+        const side = phone ? 0 : TOUR_PANEL_PX / 2 / px;
+        const drop = (phone ? TOUR_DROP_PHONE : TOUR_DROP) * size.height / px / Math.cos(elev);
+        goal.x = THREE.MathUtils.lerp(goal.x, here.x + w.x + Math.cos(az) * side, t);
+        goal.z = THREE.MathUtils.lerp(goal.z, here.z + w.z - Math.sin(az) * side, t);
+        goal.y = THREE.MathUtils.lerp(goal.y, drop, t);
+      }
       if (sel && panelOpen) {
         const base = Math.min(size.width / FIT_W, size.height / FIT_H);
         const shift = 210 / (base * s.zoom * (1 + (s.plazaZoom - 1) * s.plaza));
@@ -223,13 +265,13 @@ export function CameraRig({ panelOpen }: { panelOpen: boolean }) {
     cameraFocus.copy(s.target);
 
     cam.position.set(
-      s.target.x + Math.sin(az) * Math.cos(ELEVATION) * DISTANCE,
-      s.target.y + Math.sin(ELEVATION) * DISTANCE,
-      s.target.z + Math.cos(az) * Math.cos(ELEVATION) * DISTANCE,
+      s.target.x + Math.sin(az) * Math.cos(elev) * DISTANCE,
+      s.target.y + Math.sin(elev) * DISTANCE,
+      s.target.z + Math.cos(az) * Math.cos(elev) * DISTANCE,
     );
     cam.lookAt(s.target);
     const base = Math.min(size.width / FIT_W, size.height / FIT_H);
-    const z = base * s.zoom * seaZoom * (1 + s.focus * 0.26) * (1 + (s.plazaZoom - 1) * easeInOutCubic(s.plaza));
+    const z = base * s.zoom * seaZoom * (1 + s.focus * 0.26) * (1 + (s.plazaZoom - 1) * easeInOutCubic(s.plaza)) * s.tourZoom;
     if (Math.abs(cam.zoom - z) > 1e-4) {
       cam.zoom = z;
       cam.updateProjectionMatrix();

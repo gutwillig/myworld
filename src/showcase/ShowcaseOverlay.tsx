@@ -107,7 +107,7 @@ export const ShowcaseOverlay = memo(function ShowcaseOverlay({
 });
 
 /** Video template: YouTube poster + click-to-play, or a direct file with native controls. */
-function Reel({ tagline, embed }: { tagline: string; embed: Embed | null }) {
+export function Reel({ tagline, embed }: { tagline: string; embed: Embed | null }) {
   const [playing, setPlaying] = useState<boolean>(false);
   return (
     <>
@@ -145,7 +145,7 @@ function Reel({ tagline, embed }: { tagline: string; embed: Embed | null }) {
 }
 
 /** Portfolio template: cover image, then numbered case studies. */
-function Studio({
+export function Studio({
   tagline,
   cover,
   cases,
@@ -188,7 +188,7 @@ function Studio({
 }
 
 /** Photo template: one slide at a time, arrows / dots / keyboard. */
-function Scrapbook({ tagline, shots }: { tagline: string; shots: { id: string; src: string; caption: string }[] }) {
+export function Scrapbook({ tagline, shots }: { tagline: string; shots: { id: string; src: string; caption: string }[] }) {
   const [i, setI] = useState<number>(0);
   const n = shots.length;
   const go = useCallback(

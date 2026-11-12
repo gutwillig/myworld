@@ -24,6 +24,9 @@ type FxState = {
   /** The main-gig plaza the camera is zoomed into, or null for the whole town. */
   plazaId: string | null;
   setPlaza: (id: string | null) => void;
+  /** The building the guided tour is spotlighting (shown as if hovered). */
+  tourId: string | null;
+  setTourId: (id: string | null) => void;
   visit: VisitIntent | null;
   openVisit: (v: VisitIntent | null) => void;
   /** Replaces the generic welcome line on the next arrival. */
@@ -131,6 +134,8 @@ export const useFx = create<FxState>()((set) => ({
   select: (id) => set({ selectedId: id }),
   plazaId: null,
   setPlaza: (id) => set({ plazaId: id, hoveredId: null }),
+  tourId: null,
+  setTourId: (id) => set({ tourId: id }),
   hover: (id) => {
     // Cancel any pending unhover
     if (unhoverTimer) {

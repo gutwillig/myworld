@@ -16,7 +16,10 @@ import { isFresh, latestUpdate } from "@/updates/news";
 import { SceneLabel } from "./SceneLabel";
 import { TIMING, clamp01, easeInCubic, easeOutBack, easeOutCubic, useFx } from "./fx";
 import { dragPoint, wasDrag } from "./dragState";
+import { useIsMobile } from "@/lib/useIsMobile";
 import styles from "./signs.module.css";
+import { useWorldStore } from "@/store/world";
+import { tourLabelOf } from "@/tour/Tour";
 
 type Props = {
   building: Building;
@@ -44,13 +47,17 @@ GLOW_GEO.rotateX(-Math.PI / 2);
 
 /** A building on its lot: rise, hover, drag to another lot, remodel, and knock-down. */
 export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, born, leaving, interactive }: Props) {
-  const isHovered = useFx((s) => s.hoveredId === building.id);
+  const isHovered = useFx((s) => s.hoveredId === building.id || s.tourId === building.id);
   const isSelected = useFx((s) => s.selectedId === building.id);
+  const touring = useFx((s) => !!s.tourId);
+  const isTour = useFx((s) => s.tourId === building.id && !s.selectedId);
+  const tourLabel = useWorldStore((s) => (isTour ? tourLabelOf(s.world, building.id) : null));
   const isMoving = useFx((s) => s.moving?.id === building.id);
   const busy = useFx((s) => !!s.placement || !!s.moving);
   const hover = useFx((s) => s.hover);
   const select = useFx((s) => s.select);
   const gig = isGig(building);
+  const isMobile = useIsMobile();
   const kid = !!building.parentId;
   const plazaId = building.parentId ?? (gig ? building.id : null);
   const inPlaza = useFx((s) => !!plazaId && s.plazaId === plazaId);
@@ -380,8 +387,9 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
           <BuildingMesh type={building.type} style={building.style} accent={accent} faded={shown.past} onHeight={setHeight} />
         </group>
         <Dust at={dustAt} color={shown.past ? "#E4D6B8" : "#EFE7D6"} />
-        {signOn && !isMoving && (!kid || inPlaza) && !(anyPlaza && !inPlaza && !inDistrict) && (
-          <SceneLabel position={[0, height + 0.32, 0]} zIndex={isSelected ? 30 : isHovered ? 25 : 20} interactive={interactive && !busy}>
+        {/* On mobile, only show labels for main gig, selected, or hovered buildings */}
+        {!isMoving && (isTour || (signOn && (!kid || inPlaza) && !(anyPlaza && !inPlaza && !inDistrict) && (!isMobile || gig || isSelected || isHovered))) && (
+          <SceneLabel position={[0, height + 0.32, 0]} zIndex={isTour ? 35 : isSelected ? 30 : isHovered ? 25 : 20} interactive={interactive && !busy}>
             <button
               type="button"
               className={[
@@ -390,6 +398,7 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
                 isHovered ? styles.signHover : "",
                 isSelected ? styles.signSelected : "",
                 shown.past ? styles.signPast : "",
+                isTour ? styles.signTour : "",
               ].join(" ")}
               tabIndex={interactive ? 0 : -1}
               onPointerEnter={() => interactive && !busy && hover(building.id)}
@@ -403,14 +412,16 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
                 } else select(building.id);
               }}
             >
-              {news && <span className={styles.pennant} aria-label="New update" />}
+              {news && !isTour && <span className={styles.pennant} aria-label="New update" />}
+              {isTour && tourLabel && <span className={styles.signEyebrow}>{tourLabel}</span>}
               <span className={styles.signName}>{building.name}</span>
+              {isTour && building.oneLiner?.trim() && <span className={styles.signTourLine}>{building.oneLiner}</span>}
               <span className={styles.signMeta} aria-hidden={!isHovered}>
                 <span className={styles.signLine}>
                   {news && <span className={styles.signNew}>New · </span>}
                   {meta}
                 </span>
-                <span className={styles.signHint}>{enterOnClick ? "Click to step into the plaza" : kid ? "Click to open · drag around the plaza" : "Click to open · drag to move"}</span>
+                {!touring && <span className={styles.signHint}>{enterOnClick ? "Click to step into the plaza" : kid ? "Click to open · drag around the plaza" : "Click to open · drag to move"}</span>}
               </span>
             </button>
           </SceneLabel>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { useAuth } from "./auth";
 import { saveWorld, loadUserWorld } from "./worldSync";
 import { useWorldStore } from "@/store/world";
@@ -19,10 +20,11 @@ export function useWorldSync() {
 
   // Load user's world from Supabase on sign-in
   useEffect(() => {
+    console.log("[sync] useEffect triggered, user:", user?.email, "initialLoadDone:", initialLoadDone.current);
     if (!user || initialLoadDone.current) return;
 
     const loadFromSupabase = async () => {
-      console.log("[sync] Loading user world from Supabase...");
+      console.log("[sync] Loading user world from Supabase for user:", user.id);
       const { world, error } = await loadUserWorld(user.id);
 
       if (error) {
@@ -43,12 +45,16 @@ export function useWorldSync() {
         // User has no world in Supabase yet, sync their local world
         const state = useWorldStore.getState();
         const homeWorld = state.worlds[state.homeId];
+        console.log("[sync] homeWorld to save:", homeWorld?.id, "slug:", homeWorld?.slug, "ownerName:", homeWorld?.ownerName);
         if (homeWorld) {
+          console.log("[sync] Calling saveWorld for slug:", homeWorld.slug);
           const { error: saveError } = await saveWorld(homeWorld, user.id);
           if (saveError) {
             console.error("[sync] Failed to save initial world:", saveError);
+            toast.error("Failed to save your world. Sharing may not work.");
           } else {
             console.log("[sync] Saved initial world to Supabase");
+            toast.success(`Your world is now shareable at /w/${homeWorld.slug}`);
           }
         }
       }
@@ -92,6 +98,7 @@ export function useWorldSync() {
 
     if (error) {
       console.error("[sync] Failed to sync:", error);
+      toast.error("Failed to save changes.");
     } else {
       console.log("[sync] World synced successfully");
       lastSyncRef.current = worldHash;

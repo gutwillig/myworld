@@ -5,9 +5,9 @@ import { DEFAULT_ACCENT } from "@/buildings/kit";
 import { makeCtx } from "@/buildings/kit/common";
 import { styleOf } from "@/buildings/styles";
 import { seaOffset } from "@/grid/archipelago";
-import { type Hex, hexEquals, hexKey, hexToWorld } from "@/grid/hex";
-import { type LotZone, freeLots } from "@/grid/layout";
-import { groundHeight, terrainProfile } from "@/grid/terrainProfile";
+import { type Hex, hexEquals, hexKey, hexRing, hexToWorld } from "@/grid/hex";
+import { type LotZone, freeLots, HOME, WORLD_RADIUS } from "@/grid/layout";
+import { coastCoord, groundHeight, terrainProfile } from "@/grid/terrainProfile";
 import { type KeepsakeSpot, keepsakeFits, placeKeepsakes } from "@/keepsakes/place";
 import type { BuildingType, Terrain, World } from "@/store/types";
 import { useWorldStore } from "@/store/world";
@@ -25,20 +25,33 @@ type Lot = { hex: Hex; zone: LotZone };
 /** True when the building is a plaza piece (it moves on its plaza, not between lots). */
 const isKid = (id: string) => !!useWorldStore.getState().world.buildings.find((b) => b.id === id)?.parentId;
 
-/** Lots you could use right now: free town lots while placing, any free lot (plus its own) while moving. */
+/** Generate all valid land hexes within the world radius (flexible placement mode). */
+function allLandHexes(terrain: Terrain, excludeIds: Set<string>): Hex[] {
+  const p = terrainProfile(terrain);
+  const result: Hex[] = [];
+  for (let ring = 2; ring <= WORLD_RADIUS; ring++) {
+    for (const hex of hexRing(HOME, ring)) {
+      if (excludeIds.has(hexKey(hex))) continue;
+      const w = hexToWorld(hex);
+      // Check if it's on land (not in water/sand)
+      if (coastCoord(p, w.x, w.z) < p.sandStart - 0.4) {
+        result.push(hex);
+      }
+    }
+  }
+  return result;
+}
+
+/** Lots you could use right now: free town lots while placing, any land hex while moving. */
 function candidateLots(): Lot[] {
   const fx = useFx.getState();
   const w = useWorldStore.getState().world;
-  const hasPast = w.buildings.some((b) => b.status === "past");
   if (fx.moving) {
     const others = w.buildings.filter((b) => b.id !== fx.moving?.id);
-    const active = freeLots(w.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const }));
-    // Only include Old Town lots if there are already past buildings there
-    if (!hasPast) return active;
-    return [
-      ...active,
-      ...freeLots(w.terrain, others, "oldTown").map((hex) => ({ hex, zone: "oldTown" as const })),
-    ];
+    const taken = new Set(others.map((b) => hexKey(b.hex)));
+    // Use flexible mode: allow any land hex
+    const landHexes = allLandHexes(w.terrain, taken);
+    return landHexes.map((hex) => ({ hex, zone: "active" as const }));
   }
   if (fx.placement) return freeLots(w.terrain, w.buildings, fx.placement.district ?? "active").map((hex) => ({ hex, zone: "active" as const }));
   return [];
@@ -289,14 +302,11 @@ export function LotMarkers({ world }: { world: World }) {
     }
     if (movingId && world.buildings.find((b) => b.id === movingId)?.parentId) return [];
     if (movingId) {
+      // Flexible mode: show all land hexes
       const others = world.buildings.filter((b) => b.id !== movingId);
-      const active = freeLots(world.terrain, others, "active").map((hex) => ({ hex, zone: "active" as const }));
-      // Only show Old Town lots if there are already past buildings there
-      if (!hasPast) return active;
-      return [
-        ...active,
-        ...freeLots(world.terrain, others, "oldTown").map((hex) => ({ hex, zone: "oldTown" as const })),
-      ];
+      const taken = new Set(others.map((b) => hexKey(b.hex)));
+      const landHexes = allLandHexes(world.terrain, taken);
+      return landHexes.map((hex) => ({ hex, zone: "active" as const }));
     }
     if (placing) return freeLots(world.terrain, world.buildings, placingDistrict ?? "active").map((hex) => ({ hex, zone: "active" as const }));
     return [];

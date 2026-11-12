@@ -2,12 +2,17 @@ import { clampSpot, clientsOf, isGig, nextSpot } from "@/grid/plaza";
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { hexEquals, hexToWorld, type Hex } from "@/grid/hex";
-import { HOME, computeRoads, districtOf, hubsFor, lotZone, pickActiveLot, pickOldTownLot } from "@/grid/layout";
+import { hexDistance, hexEquals, hexToWorld, type Hex } from "@/grid/hex";
+import { HOME, WORLD_RADIUS, computeRoads, districtOf, hubsFor, lotZone, pickActiveLot, pickOldTownLot } from "@/grid/layout";
+import { coastCoord, terrainProfile } from "@/grid/terrainProfile";
 import { MAX_KEEPSAKES, NOTE_MAX, parseKeepsakes } from "@/keepsakes/catalog";
 import { UPDATES_KEPT, UPDATE_MAX } from "@/updates/news";
 import type { Building, BuildingType, BuildingUpdate, Keepsake, KeepsakeKind, KeepsakePin, Showcase, Status, Terrain, TownCenter, World } from "./types";
 import { PITCH_MAX, TOWN_CENTERS } from "./types";
+
+/** Generate a UUID for database compatibility, or short ID for non-synced items */
+const uuid = () => crypto.randomUUID();
+const shortId = () => nanoid(8);
 
 export const STORAGE_KEY = "worlds.v1";
 export const STORE_VERSION = 5;
@@ -43,7 +48,7 @@ function uniqueSlug(name: string, buildings: Building[], selfId?: string): strin
 
 export function createEmptyWorld(ownerName = "Gus", terrain: Terrain = "beach"): World {
   return {
-    id: nanoid(10),
+    id: uuid(),
     slug: slugify(ownerName).slice(0, 12) || "me",
     ownerName,
     terrain,
@@ -74,7 +79,7 @@ export function parseWorld(raw: unknown): World {
   const buildings: Building[] = obj.buildings
     .filter((b): b is Building => !!b && typeof b === "object" && typeof (b as Building).name === "string" && !!(b as Building).hex)
     .map((b) => ({
-      id: b.id || nanoid(10),
+      id: b.id || uuid(),
       slug: b.slug || slugify(b.name),
       type: b.type,
       name: b.name,
@@ -113,7 +118,7 @@ export function parseWorld(raw: unknown): World {
 function parseUpdates(raw: unknown[]): BuildingUpdate[] {
   return raw
     .filter((u): u is BuildingUpdate => !!u && typeof (u as BuildingUpdate).text === "string" && typeof (u as BuildingUpdate).at === "number")
-    .map((u) => ({ id: u.id || nanoid(8), text: u.text.slice(0, UPDATE_MAX), at: u.at }))
+    .map((u) => ({ id: u.id || shortId(), text: u.text.slice(0, UPDATE_MAX), at: u.at }))
     .sort((a, b) => b.at - a.at)
     .slice(0, UPDATES_KEPT);
 }
@@ -121,8 +126,8 @@ function parseUpdates(raw: unknown[]): BuildingUpdate[] {
 const HOUR = 3600_000;
 /** Ross's town has a little news so the board isn't empty on a first visit. */
 const rossNews = (name: string, now: number): BuildingUpdate[] | undefined => {
-  if (name === "Film Club") return [{ id: nanoid(8), text: "Friday screening: Rear Window, 8pm", at: now - 2 * HOUR }];
-  if (name === "Ross & Co.") return [{ id: nanoid(8), text: "Q3 deck ships Friday — comments open", at: now - 50 * HOUR }];
+  if (name === "Film Club") return [{ id: shortId(), text: "Friday screening: Rear Window, 8pm", at: now - 2 * HOUR }];
+  if (name === "Ross & Co.") return [{ id: shortId(), text: "Q3 deck ships Friday — comments open", at: now - 50 * HOUR }];
   return undefined;
 };
 const withRossNews = (w: World): World => {
@@ -176,7 +181,7 @@ function withBuildings(
           : pickActiveLot(w.terrain, w.buildings, item.district ?? "side");
     if (!hex) break;
     const b: Building = {
-      id: nanoid(10),
+      id: uuid(),
       slug: uniqueSlug(item.name, w.buildings),
       type: item.type,
       name: item.name,
@@ -334,9 +339,9 @@ function syncPlazas(buildings: Building[]): Building[] {
 /**
  * Keeps everyone in their district: the main gig stands on the square, other town places on a
  * fountain or playground lot (older worlds get moved over the first time they load).
+ * NOTE: We no longer force the main gig to the hub - users can place it anywhere on land.
  */
 function syncDistricts(world: World): Building[] {
-  const hubs = hubsFor(world.terrain);
   let gigSeen = false;
   let out = world.buildings.map((b) => {
     if (!isGig(b)) return b;
@@ -346,7 +351,8 @@ function syncDistricts(world: World): Building[] {
       return next;
     }
     gigSeen = true;
-    return hexEquals(b.hex, hubs.gig) ? b : { ...b, hex: { ...hubs.gig } };
+    // Allow main gig to be placed anywhere (don't force to hub)
+    return b;
   });
   const seen = new Set<string>();
   const stray: string[] = [];
@@ -383,7 +389,7 @@ export const useWorldStore = create<WorldState>()(
         const { worlds, order, homeId, currentId } = get();
         const rest = { ...worlds };
         delete rest[currentId];
-        const id = rest[next.id] ? nanoid(10) : next.id;
+        const id = rest[next.id] ? uuid() : next.id;
         const world = withRoads({ ...next, id, slug: uniqueWorldSlug(next.slug || next.ownerName, rest) });
         return {
           world,
@@ -408,7 +414,7 @@ export const useWorldStore = create<WorldState>()(
         if (gig) {
           const who = client?.trim().slice(0, 40);
           const building: Building = {
-            id: nanoid(10),
+            id: uuid(),
             slug: uniqueSlug(trimmed, world.buildings),
             type,
             name: trimmed,
@@ -459,7 +465,7 @@ export const useWorldStore = create<WorldState>()(
                 : `The ${district === "fun" ? "playground" : "fountain"} is full. Knock something down or move it to Old Town.`,
           };
         const building: Building = {
-          id: nanoid(10),
+          id: uuid(),
           slug: uniqueSlug(trimmed, world.buildings),
           type,
           name: trimmed,
@@ -561,12 +567,21 @@ export const useWorldStore = create<WorldState>()(
       moveBuilding: (id, hex) => {
         const { world } = get();
         const b = world.buildings.find((x) => x.id === id);
-        if (!b || b.parentId || isGig(b) || hexEquals(b.hex, hex)) return false;
-        if (b.category === "gig" && world.buildings.some((x) => x.id !== id && isGig(x)) && lotZone(world.terrain, hex) === "active") return false;
-        const zone = lotZone(world.terrain, hex);
-        if (!zone || world.buildings.some((x) => x.id !== id && x.parentId !== id && hexEquals(x.hex, hex))) return false;
-        const status: Status = zone === "oldTown" ? "past" : b.status === "past" ? "active" : b.status;
-        const buildings = world.buildings.map((x) => (x.id === id ? { ...x, hex: { ...hex }, status } : x));
+        if (!b || b.parentId || hexEquals(b.hex, hex)) return false;
+
+        // Check if hex is on land (flexible placement)
+        const p = terrainProfile(world.terrain);
+        const w = hexToWorld(hex);
+        const dist = hexDistance(hex, HOME);
+        const isLand = coastCoord(p, w.x, w.z) < p.sandStart - 0.4;
+        const inBounds = dist >= 2 && dist <= WORLD_RADIUS;
+        if (!isLand || !inBounds) return false;
+
+        // Check if another building is already there
+        if (world.buildings.some((x) => x.id !== id && x.parentId !== id && hexEquals(x.hex, hex))) return false;
+
+        // Keep the building's current status when moving (don't auto-convert to past/active)
+        const buildings = world.buildings.map((x) => (x.id === id ? { ...x, hex: { ...hex } } : x));
         set(commit(withRoads({ ...world, buildings })));
         return true;
       },
@@ -630,7 +645,7 @@ export const useWorldStore = create<WorldState>()(
           const next = createEmptyWorld(s.world.ownerName, s.world.terrain);
           const rest = { ...worlds };
           delete rest[currentId];
-          const id = rest[next.id] ? nanoid(10) : next.id;
+          const id = rest[next.id] ? uuid() : next.id;
           const world = withRoads({ ...next, id, slug: uniqueWorldSlug(next.slug || next.ownerName, rest) });
           return {
             world,
@@ -711,7 +726,7 @@ export const useWorldStore = create<WorldState>()(
         if (!clean || currentId !== homeId) return false;
         const b = world.buildings.find((x) => x.id === buildingId);
         if (!b) return false;
-        const update: BuildingUpdate = { id: nanoid(8), text: clean, at: Date.now() };
+        const update: BuildingUpdate = { id: shortId(), text: clean, at: Date.now() };
         const buildings = world.buildings.map((x) =>
           x.id === buildingId ? { ...x, updates: [update, ...(x.updates ?? [])].slice(0, UPDATES_KEPT) } : x,
         );

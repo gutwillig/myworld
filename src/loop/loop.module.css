@@ -428,3 +428,151 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .dock {
+    bottom: 20px;
+    width: calc(100vw - 24px);
+    gap: 10px;
+  }
+
+  .bar {
+    padding: 8px;
+    gap: 8px;
+    border-radius: 22px;
+  }
+
+  .sprout {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sprout svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .input {
+    height: 40px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  .enter {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 15px;
+    border-radius: 16px;
+    gap: 4px;
+  }
+
+  .enter svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .hint {
+    display: none;
+  }
+
+  .picker {
+    gap: 8px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .card {
+    padding: 10px 6px 10px;
+    border-radius: 18px;
+    gap: 2px;
+  }
+
+  .cardArt {
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  .cardLabel {
+    font-size: 14px;
+  }
+
+  .badge {
+    font-size: 11px;
+    height: 20px;
+    padding: 0 8px;
+  }
+
+  .stepHead {
+    padding: 3px 4px 3px 3px;
+    gap: 6px;
+  }
+
+  .stepTitle {
+    font-size: 14px;
+  }
+
+  .stepBack {
+    width: 26px;
+    height: 26px;
+  }
+
+  .stepCrumb {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .crumbDot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .tile {
+    padding: 12px 8px 10px;
+  }
+
+  .tileIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .tileIcon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tileSub {
+    font-size: 11px;
+  }
+
+  .moreRow {
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  .moreChip {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .catRow {
+    gap: 4px;
+  }
+
+  .clientInput {
+    height: 26px;
+    width: 120px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .replaceLink {
+    font-size: 11px;
+  }
+}

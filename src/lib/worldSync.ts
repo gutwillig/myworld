@@ -2,33 +2,87 @@ import { supabase, type DbWorld, type DbBuilding, type DbBuildingCta, type DbBui
 import type { World, Building, Keepsake } from "@/store/types";
 import { withRoads } from "@/store/world";
 
+/** Check if a string is a valid UUID */
+export function isUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+/** Migrate world and building IDs to UUIDs if needed. Returns null if no migration needed. */
+export function migrateToUUIDs(world: World): World | null {
+  let needsUpdate = false;
+
+  // Migrate world ID
+  let newWorldId = world.id;
+  if (!isUUID(world.id)) {
+    newWorldId = crypto.randomUUID();
+    needsUpdate = true;
+  }
+
+  // Migrate building IDs
+  const buildings = world.buildings.map((b) => {
+    if (!isUUID(b.id)) {
+      needsUpdate = true;
+      return { ...b, id: crypto.randomUUID() };
+    }
+    return b;
+  });
+
+  if (needsUpdate) {
+    return { ...world, id: newWorldId, buildings };
+  }
+  return null;
+}
+
 /** Convert local World to database format */
 function worldToDb(world: World, ownerId: string): Omit<DbWorld, "created_at" | "updated_at"> {
+  // Store all world data in the `data` JSON column since the production schema is minimal
+  const worldData = {
+    ownerName: world.ownerName,
+    terrain: world.terrain,
+    pitch: world.pitch,
+    center: world.center,
+    home: world.home,
+    keepsakes: world.keepsakes,
+  };
   return {
     id: world.id,
     owner_id: ownerId,
     slug: world.slug,
-    owner_name: world.ownerName,
-    terrain: world.terrain,
-    pitch: world.pitch,
-    center: world.center,
     is_public: true,
+    data: JSON.stringify(worldData),
   };
 }
 
 /** Convert database World to local format */
 function dbToWorld(db: DbWorld, buildings: Building[], keepsakes: Keepsake[]): World {
+  // All world data is stored in the `data` JSON column
+  let worldData: {
+    ownerName?: string;
+    terrain?: World["terrain"];
+    pitch?: string;
+    center?: World["center"];
+    home?: { q: number; r: number };
+    keepsakes?: Keepsake[];
+  } = {};
+  try {
+    if (db.data) {
+      worldData = JSON.parse(db.data);
+    }
+  } catch {
+    // Invalid JSON, use defaults
+  }
+
   return {
     id: db.id,
     slug: db.slug,
-    ownerName: db.owner_name,
-    terrain: db.terrain,
-    home: { q: 0, r: 0 },
+    ownerName: worldData.ownerName ?? "Unknown",
+    terrain: worldData.terrain ?? "beach",
+    home: worldData.home ?? { q: 0, r: 0 },
     buildings,
     roads: [], // Will be computed by withRoads
-    keepsakes,
-    center: db.center as World["center"],
-    pitch: db.pitch,
+    keepsakes: worldData.keepsakes ?? keepsakes,
+    center: worldData.center,
+    pitch: worldData.pitch,
   };
 }
 
@@ -96,13 +150,21 @@ function dbToBuilding(
   };
 }
 
-/** Save a world to Supabase */
-export async function saveWorld(world: World, userId: string): Promise<{ error: Error | null }> {
+/** Save a world to Supabase. If IDs need migration, returns the migrated world. */
+export async function saveWorld(world: World, userId: string): Promise<{ error: Error | null; migratedWorld?: World }> {
   try {
+    // Migrate IDs to UUIDs if needed
+    const migrated = migrateToUUIDs(world);
+    const worldToSave = migrated ?? world;
+
+    if (migrated) {
+      console.log("[worldSync] Migrated world/building IDs to UUIDs");
+    }
+
     // Upsert world
     const { error: worldError } = await supabase
       .from("worlds")
-      .upsert(worldToDb(world, userId), { onConflict: "id" });
+      .upsert(worldToDb(worldToSave, userId), { onConflict: "id" });
 
     if (worldError) throw worldError;
 
@@ -110,10 +172,10 @@ export async function saveWorld(world: World, userId: string): Promise<{ error: 
     const { data: existingBuildings } = await supabase
       .from("buildings")
       .select("id")
-      .eq("world_id", world.id);
+      .eq("world_id", worldToSave.id);
 
     const existingIds = new Set(existingBuildings?.map((b) => b.id) ?? []);
-    const currentIds = new Set(world.buildings.map((b) => b.id));
+    const currentIds = new Set(worldToSave.buildings.map((b) => b.id));
 
     // Delete removed buildings
     const toDelete = [...existingIds].filter((id) => !currentIds.has(id));
@@ -122,10 +184,10 @@ export async function saveWorld(world: World, userId: string): Promise<{ error: 
     }
 
     // Upsert buildings
-    for (const building of world.buildings) {
+    for (const building of worldToSave.buildings) {
       const { error: buildingError } = await supabase
         .from("buildings")
-        .upsert(buildingToDb(building, world.id), { onConflict: "id" });
+        .upsert(buildingToDb(building, worldToSave.id), { onConflict: "id" });
 
       if (buildingError) throw buildingError;
 
@@ -154,7 +216,7 @@ export async function saveWorld(world: World, userId: string): Promise<{ error: 
       }
     }
 
-    return { error: null };
+    return { error: null, migratedWorld: migrated ?? undefined };
   } catch (err) {
     console.error("[worldSync] Failed to save world:", err);
     return { error: err as Error };
@@ -163,6 +225,7 @@ export async function saveWorld(world: World, userId: string): Promise<{ error: 
 
 /** Load a world from Supabase by slug */
 export async function loadWorldBySlug(slug: string): Promise<{ world: World | null; error: Error | null }> {
+  console.log("[worldSync] loadWorldBySlug called with slug:", slug);
   try {
     // Fetch world
     const { data: worldData, error: worldError } = await supabase
@@ -172,9 +235,12 @@ export async function loadWorldBySlug(slug: string): Promise<{ world: World | nu
       .eq("is_public", true)
       .single();
 
+    console.log("[worldSync] Query result - data:", worldData, "error:", worldError);
+
     if (worldError) {
       if (worldError.code === "PGRST116") {
         // Not found
+        console.log("[worldSync] World not found for slug:", slug);
         return { world: null, error: null };
       }
       throw worldError;

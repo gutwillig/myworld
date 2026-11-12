@@ -19,13 +19,16 @@ import { useFx } from "@/world/fx";
 import { setLabelHost } from "@/world/SceneLabel";
 import { useWorldSync } from "@/lib/useWorldSync";
 import { loadWorldBySlug } from "@/lib/worldSync";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { Brand } from "./Brand";
+import { BuildingList } from "./BuildingList";
 import { WorldChoice } from "./WorldChoice";
 import { NeighborsMenu, worldPath } from "./NeighborsMenu";
 import neighbors from "./neighbors.module.css";
 import { WorldMenu } from "./WorldMenu";
 import { UserMenu } from "./UserMenu";
 import { VisitorCta } from "./VisitorCta";
+import { Tour, TourButton } from "@/tour/Tour";
 import styles from "./world.module.css";
 
 const WorldScene = lazy(() => import("@/world/WorldScene"));
@@ -50,6 +53,8 @@ export default function WorldPage() {
   /** The showcase opens on click; the owner can still reach the panel via Edit. */
   const [editOverride, setEditOverride] = useState<boolean>(false);
   const [loadingPublicWorld, setLoadingPublicWorld] = useState(false);
+  const [touring, setTouring] = useState<boolean>(false);
+  const [tourRun, setTourRun] = useState<number>(0);
   const navigate = useNavigate();
   const { world: worldSlug } = useParams();
   const worlds = useWorldStore((s) => s.worlds);
@@ -64,6 +69,7 @@ export default function WorldPage() {
   const order = useWorldStore((s) => s.order);
   const started = useWorldStore((s) => s.started);
   const isHome = currentId === homeId;
+  const isMobile = useIsMobile();
   const targetId = worldSlug ? getWorldBySlug(worlds, worldSlug)?.id : homeId;
 
   const building = travel ? null : (world.buildings.find((b) => b.id === selectedId) ?? null);
@@ -180,7 +186,7 @@ export default function WorldPage() {
   useEffect(() => {
     if (tip && (moving || selectedId)) dismissTip();
   }, [tip, moving, selectedId, dismissTip]);
-  const showTip = tip && world.buildings.length > 0 && !panelOpen && !picking && !travel && !arrived && !moving && !visiting;
+  const showTip = tip && !touring && world.buildings.length > 0 && !panelOpen && !picking && !travel && !arrived && !moving && !visiting;
 
   const openResident = useCallback(
     (name: string) => {
@@ -279,12 +285,15 @@ export default function WorldPage() {
       <header className={styles.top}>
         <div className={styles.topLeft}>
           <Brand />
+          {isMobile && <BuildingList />}
           <NewsStack hidden={panelOpen || !!travel || !!moving || visiting || !started || !!plazaGig} />
         </div>
         <div className={styles.topRight}>
+          {world.buildings.length > 0 && !travel && <TourButton onClick={() => setTourRun((n) => n + 1)} />}
           {isHome && <KeepsakesMenu />}
-          <NeighborsMenu />
-          <WorldMenu />
+          {/* Hide navigation menus on mobile when visiting someone else's world */}
+          {(!isMobile || isHome) && <NeighborsMenu />}
+          {(!isMobile || isHome) && <WorldMenu />}
           <UserMenu />
         </div>
       </header>
@@ -363,13 +372,14 @@ export default function WorldPage() {
         </button>
       )}
 
-      {plazaGig && !panelOpen && !travel && !arrived && !moving && !visiting && (
+      {plazaGig && !touring && !panelOpen && !travel && !arrived && !moving && !visiting && (
         <button type="button" className={plazaStyles.backBottom} onClick={() => setPlaza(null)}>
           <span aria-hidden>←</span> Back to town
         </button>
       )}
 
-      <PromptBar hidden={panelOpen || !!travel || !!arrived || !!moving || visiting} onPickingChange={setPicking} />
+      {/* Hide prompt bar on mobile when visiting someone else's world */}
+      <PromptBar hidden={touring || panelOpen || !!travel || !!arrived || !!moving || visiting || (isMobile && !isHome)} onPickingChange={setPicking} />
 
       {building && showPanel && (
         <div className={`${styles.panelSlot} ${closing ? styles.panelOut : styles.panelIn}`} key={building.id}>
@@ -405,14 +415,17 @@ export default function WorldPage() {
         />
       )}
 
+      <Tour restart={tourRun} onActiveChange={setTouring} />
+
       <VisitPreview />
 
-      {!started && <WorldChoice />}
+      {/* Only show onboarding if not started AND not viewing someone else's public world */}
+      {!started && !worldSlug && <WorldChoice />}
 
       {/* Show CTA for visitors viewing someone else's world */}
       <VisitorCta
         ownerName={world.ownerName}
-        hidden={isHome || panelOpen || !!travel || !!arrived || !started}
+        hidden={touring || isHome || panelOpen || !!travel || !!arrived || !started}
       />
     </main>
   );

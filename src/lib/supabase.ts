@@ -19,11 +19,8 @@ export type DbWorld = {
   id: string;
   owner_id: string;
   slug: string;
-  owner_name: string;
-  terrain: "beach" | "mountain" | "village";
-  pitch?: string;
-  center?: string;
   is_public: boolean;
+  data: string; // JSON string for all world data (ownerName, terrain, pitch, center, home, keepsakes)
   created_at: string;
   updated_at: string;
 };

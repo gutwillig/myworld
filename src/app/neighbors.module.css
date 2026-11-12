@@ -352,3 +352,59 @@
     transform: translate(-50%, 0);
   }
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .trigger {
+    height: 40px;
+    padding: 0 12px 0 6px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .panel {
+    width: 280px;
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .visiting {
+    top: 16px;
+    padding: 5px 5px 5px 14px;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .visiting strong {
+    font-size: 14px;
+  }
+
+  .homeBtn {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    gap: 5px;
+  }
+
+  .homeBtn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .hud {
+    bottom: 24px;
+    min-width: 260px;
+    padding: 12px 18px 14px;
+    border-radius: 18px;
+  }
+
+  .hudLabel {
+    font-size: 16px;
+    gap: 7px;
+  }
+
+  .hudLabel svg {
+    width: 18px;
+    height: 18px;
+  }
+}

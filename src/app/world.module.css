@@ -179,3 +179,43 @@
     transform: translate(-50%, 0) scale(1);
   }
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .top {
+    padding: 16px 12px;
+  }
+
+  .topLeft {
+    gap: 8px;
+  }
+
+  .topRight {
+    gap: 6px;
+  }
+
+  .welcome {
+    bottom: 100px;
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: normal;
+    max-width: calc(100vw - 48px);
+    text-align: center;
+  }
+
+  .tip {
+    bottom: 100px;
+    padding: 8px 8px 8px 12px;
+    font-size: 12px;
+    gap: 6px;
+    max-width: calc(100vw - 32px);
+    white-space: normal;
+    text-align: left;
+  }
+
+  .tipX {
+    padding: 5px 8px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+}
