@@ -81,7 +81,7 @@ type FxState = {
 
 /** Debounce timer for unhover to prevent sign flashing. */
 let unhoverTimer: ReturnType<typeof setTimeout> | null = null;
-const UNHOVER_DELAY = 120;
+const UNHOVER_DELAY = 250;
 
 export const useFx = create<FxState>()((set) => ({
   visit: null,
