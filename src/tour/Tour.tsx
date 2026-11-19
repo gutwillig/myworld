@@ -42,7 +42,11 @@ function stopsFor(world: World): Stop[] {
 export function tourLabelOf(world: World, id: string): string | null {
   for (const st of stopsFor(world)) {
     const i = st.buildings.findIndex((b) => b.id === id);
-    if (i >= 0) return `${st.title} \u00b7 ${i + 1} of ${st.buildings.length}`;
+    if (i >= 0) {
+      const b = st.buildings[i];
+      const label = b.parentId ? `${st.title} \u00b7 Client` : st.title;
+      return `${label} \u00b7 ${i + 1} of ${st.buildings.length}`;
+    }
   }
   return null;
 }
@@ -296,7 +300,7 @@ export function Tour({ restart, onActiveChange }: Props) {
       </div>
 
       <header className={styles.head} key={`h-${spot.id}`}>
-        <span className={styles.eyebrow}>{stop.title}</span>
+        <span className={styles.eyebrow}>{spot.parentId ? `${stop.title} \u00b7 Client` : stop.title}</span>
         <h2 className={styles.name}>{spot.name}</h2>
         <button type="button" className={styles.open} onClick={() => useFx.getState().select(spot.id)}>
           <Maximize2 size={14} strokeWidth={2.4} aria-hidden /> Open full page
