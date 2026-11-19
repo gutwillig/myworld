@@ -69,7 +69,7 @@ function Lights() {
   );
 }
 
-function Buildings({ world, epoch, interactive }: { world: World; epoch: number; interactive: boolean }) {
+function Buildings({ world, epoch, interactive, editable }: { world: World; epoch: number; interactive: boolean; editable: boolean }) {
   const entries = usePresence(world.buildings, keyOf, epoch, TIMING.leave * 1000 + 700);
   return (
     <group>
@@ -81,6 +81,7 @@ function Buildings({ world, epoch, interactive }: { world: World; epoch: number;
           born={e.born}
           leaving={e.leaving}
           interactive={interactive}
+          editable={editable}
         />
       ))}
     </group>
@@ -156,8 +157,8 @@ const Island = memo(function Island({ worldId, index }: { worldId: string; index
       <Realms world={world} interactive={isCurrent && !traveling} />
       <Plazas world={world} interactive={isCurrent && !traveling} />
       <Hubs world={world} interactive={isCurrent && !traveling} />
-      <Buildings world={world} epoch={epoch} interactive={isCurrent && !traveling} />
-      {isCurrent && !traveling && (
+      <Buildings world={world} epoch={epoch} interactive={isCurrent && !traveling} editable={isHome} />
+      {isCurrent && !traveling && isHome && (
         <>
           <LotMarkers world={world} />
           <PlacementGhost terrain={world.terrain} />

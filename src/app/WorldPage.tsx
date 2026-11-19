@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Hand, Home as HomeIcon, Plane } from "lucide-react";
+import { Hand, Plane } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ferryRoute, routeLength, seaOffset } from "@/grid/archipelago";
@@ -23,11 +23,12 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { Brand } from "./Brand";
 import { BuildingList } from "./BuildingList";
 import { WorldChoice } from "./WorldChoice";
-import { NeighborsMenu, worldPath } from "./NeighborsMenu";
+import { NeighborsMenu } from "./NeighborsMenu";
 import neighbors from "./neighbors.module.css";
 import { WorldMenu } from "./WorldMenu";
 import { UserMenu } from "./UserMenu";
 import { VisitorCta } from "./VisitorCta";
+import { useAuth } from "@/lib/auth";
 import { Tour, TourButton } from "@/tour/Tour";
 import styles from "./world.module.css";
 
@@ -38,6 +39,7 @@ const TIP_KEY = "myworld.tip.move";
 export default function WorldPage() {
   // Sync authenticated user's world to Supabase
   useWorldSync();
+  const { user } = useAuth();
 
   const selectedId = useFx((s) => s.selectedId);
   const select = useFx((s) => s.select);
@@ -284,7 +286,7 @@ export default function WorldPage() {
 
       <header className={styles.top}>
         <div className={styles.topLeft}>
-          <Brand />
+          {isHome && <Brand />}
           {isMobile && <BuildingList />}
           <NewsStack hidden={panelOpen || !!travel || !!moving || visiting || !started || !!plazaGig} />
         </div>
@@ -298,30 +300,12 @@ export default function WorldPage() {
         </div>
       </header>
 
-      {plazaGig && (
+      {plazaGig && isHome && (
         <div className={plazaStyles.bar} key={plazaId}>
           <span className={plazaStyles.eyebrow}>{plazaGig.eyebrow}</span>
           <strong>{plazaGig.title}</strong>
           {firstClient && <span className={plazaStyles.nudge}>Add your first client below ↓</span>}
-          {plazaGig.empty && isHome && <span className={plazaStyles.nudge}>Nothing here yet. Add one below ↓</span>}
-        </div>
-      )}
-
-      {!isHome && !travel && (
-        <div className={neighbors.visiting} key={currentId}>
-          <span>
-            Visiting <strong>{world.ownerName}&rsquo;s world</strong>
-          </span>
-          <button
-            type="button"
-            className={neighbors.homeBtn}
-            onClick={() => {
-              const home = worlds[homeId];
-              if (home) navigate(worldPath(home, homeId));
-            }}
-          >
-            <HomeIcon size={15} strokeWidth={2.2} aria-hidden /> Fly home
-          </button>
+          {plazaGig.empty && <span className={plazaStyles.nudge}>Nothing here yet. Add one below ↓</span>}
         </div>
       )}
 
@@ -378,8 +362,8 @@ export default function WorldPage() {
         </button>
       )}
 
-      {/* Hide prompt bar on mobile when visiting someone else's world */}
-      <PromptBar hidden={touring || panelOpen || !!travel || !!arrived || !!moving || visiting || (isMobile && !isHome)} onPickingChange={setPicking} />
+      {/* Hide prompt bar when visiting someone else's world without being signed in */}
+      <PromptBar hidden={touring || panelOpen || !!travel || !!arrived || !!moving || visiting || (!isHome && !user)} onPickingChange={setPicking} />
 
       {building && showPanel && (
         <div className={`${styles.panelSlot} ${closing ? styles.panelOut : styles.panelIn}`} key={building.id}>

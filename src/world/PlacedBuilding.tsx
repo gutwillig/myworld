@@ -28,6 +28,8 @@ type Props = {
   leaving: boolean;
   /** False for islands you're not on: no hover, no clicks. */
   interactive: boolean;
+  /** False for worlds you don't own: no dragging to move. */
+  editable: boolean;
 };
 
 export const BUILDING_SCALE = 1.28;
@@ -46,7 +48,7 @@ const GLOW_GEO = new THREE.CircleGeometry(0.93, 48);
 GLOW_GEO.rotateX(-Math.PI / 2);
 
 /** A building on its lot: rise, hover, drag to another lot, remodel, and knock-down. */
-export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, born, leaving, interactive }: Props) {
+export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, born, leaving, interactive, editable }: Props) {
   const isHovered = useFx((s) => s.hoveredId === building.id || s.tourId === building.id);
   const isSelected = useFx((s) => s.selectedId === building.id);
   const touring = useFx((s) => !!s.tourId);
@@ -314,13 +316,13 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
   const onDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       const fx = useFx.getState();
-      if (!interactive || leaving || e.button !== 0 || fx.placement || fx.travel) return;
+      if (!interactive || !editable || leaving || e.button !== 0 || fx.placement || fx.travel) return;
       e.stopPropagation();
       // Plaza pieces move only inside their plaza; the HQ carries the whole plaza from town view.
       if ((kid && !inPlaza) || (gig && inPlaza)) return;
       fx.setPress({ id: building.id, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY });
     },
-    [building.id, interactive, leaving, kid, gig, inPlaza],
+    [building.id, interactive, editable, leaving, kid, gig, inPlaza],
   );
   const onOver = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
@@ -332,9 +334,9 @@ export const PlacedBuilding = memo(function PlacedBuilding({ building, terrain, 
         return;
       }
       hover(building.id);
-      document.body.style.cursor = "grab";
+      document.body.style.cursor = editable ? "grab" : "pointer";
     },
-    [building.id, hover, leaving, interactive, kid, inPlaza],
+    [building.id, hover, leaving, interactive, editable, kid, inPlaza],
   );
   const onOut = useCallback(() => {
     if (useFx.getState().hoveredId === building.id) hover(null);
