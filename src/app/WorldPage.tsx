@@ -374,6 +374,7 @@ export default function WorldPage() {
             onRename={(name) => updateBuilding(building.id, { name })}
             onOneLiner={(oneLiner) => updateBuilding(building.id, { oneLiner })}
             onStatus={onStatus}
+            onType={(type) => updateBuilding(building.id, { type })}
             onLinks={(links: Link[]) => updateBuilding(building.id, { links })}
             onResidents={(residents: string[]) => updateBuilding(building.id, { residents })}
             onKnockDown={onKnockDown}

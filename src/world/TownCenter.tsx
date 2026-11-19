@@ -481,7 +481,7 @@ export const TownCenter = memo(function TownCenter({ world, isHome, isCurrent, i
         <div className={styles.centerStack}>
           {pitchOpen && !editing && <PitchBubble name={world.ownerName} pitch={pitch} onClose={() => setPitchOpen(false)} />}
           <div className={`${styles.homeSign} ${hover ? styles.signHover : ""}`} style={{ cursor: "default" }}>
-            {`${world.ownerName}\u2019s ${CENTER_INFO[kind].sign}`}
+            {`${world.ownerName}\u2019s world`}
             {hover && canEdit && !editing && <span className={styles.centerHint}>Click to change</span>}
           </div>
         </div>

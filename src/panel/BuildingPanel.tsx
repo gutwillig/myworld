@@ -4,7 +4,8 @@ import { Link as RouterLink } from "react-router-dom";
 import { BuildingIcon } from "@/buildings/BuildingIcon";
 import { buildingAccent } from "@/buildings/kit";
 import { typeLabel } from "@/buildings/suggest";
-import type { Building, Link, Shot, Showcase, Status } from "@/store/types";
+import type { Building, BuildingType, Link, Shot, Showcase, Status } from "@/store/types";
+import { PICKABLE_TYPES } from "@/store/types";
 import { ShowcaseEditor } from "@/showcase/ShowcaseEditor";
 import { launchOf, videoOf, ytEmbedUrl, type Embed } from "@/showcase/media";
 import { UpdatesField } from "@/updates/UpdatesField";
@@ -22,6 +23,7 @@ export type BuildingPanelProps = {
   onRename: (name: string) => void;
   onOneLiner: (v: string) => void;
   onStatus: (s: Status) => void;
+  onType: (t: BuildingType) => void;
   onLinks: (l: Link[]) => void;
   onResidents: (r: string[]) => void;
   onKnockDown: () => void;
@@ -83,6 +85,7 @@ export const BuildingPanel = memo(function BuildingPanel({
   onRename,
   onOneLiner,
   onStatus,
+  onType,
   onLinks,
   onResidents,
   onKnockDown,
@@ -95,6 +98,7 @@ export const BuildingPanel = memo(function BuildingPanel({
   onPostUpdate,
   onRemoveUpdate,
 }: BuildingPanelProps) {
+  const [typePicking, setTypePicking] = useState(false);
   const isPast = building.status === "past";
   const isKid = !!building.parentId;
   const isGig = building.category === "gig";
@@ -138,7 +142,27 @@ export const BuildingPanel = memo(function BuildingPanel({
             )}
           </div>
         )}
-        <p className={styles.kind}>{typeLabel(building.type)}</p>
+        <button type="button" className={styles.kindBtn} onClick={() => setTypePicking((v) => !v)}>
+          {typeLabel(building.type)}
+          <span className={styles.kindArrow}>{typePicking ? "▲" : "▼"}</span>
+        </button>
+        {typePicking && (
+          <div className={styles.typePicker}>
+            {PICKABLE_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`${styles.typeOption} ${t === building.type ? styles.typeOptionOn : ""}`}
+                onClick={() => {
+                  onType(t);
+                  setTypePicking(false);
+                }}
+              >
+                {typeLabel(t)}
+              </button>
+            ))}
+          </div>
+        )}
         <InlineText
           ariaLabel="Building name"
           className={styles.name}

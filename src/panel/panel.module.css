@@ -64,6 +64,70 @@
   color: var(--ink-faint);
 }
 
+.kindBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 2px;
+  padding: 4px 8px 4px 0;
+  border: 0;
+  background: transparent;
+  font: 700 11px/1 var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.kindBtn:hover {
+  color: var(--ink);
+}
+
+.kindArrow {
+  font-size: 8px;
+  opacity: 0.6;
+}
+
+.typePicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(46, 74, 59, 0.05);
+}
+
+.typeOption {
+  padding: 6px 12px;
+  border: 1px solid rgba(46, 74, 59, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  font: 600 12px/1 var(--font-ui);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.typeOption:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(46, 74, 59, 0.25);
+  color: var(--ink);
+}
+
+.typeOptionOn {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.typeOptionOn:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
 .inline {
   display: block;
   width: 100%;
