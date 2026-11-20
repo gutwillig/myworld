@@ -22,13 +22,13 @@ export function UserMenu() {
     return () => document.removeEventListener("click", handleClick);
   }, [showDropdown]);
 
-  // Show sign in even while loading (Supabase check is fast)
+  // Show create my own even while loading (Supabase check is fast)
   if (loading && !user) {
     return (
       <>
         <button type="button" className={styles.signInButton} onClick={() => setShowAuth(true)}>
           <User size={16} strokeWidth={2.2} />
-          Sign in
+          Create my own
         </button>
         <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
       </>
@@ -40,7 +40,7 @@ export function UserMenu() {
       <>
         <button type="button" className={styles.signInButton} onClick={() => setShowAuth(true)}>
           <User size={16} strokeWidth={2.2} />
-          Sign in
+          Create my own
         </button>
         <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
       </>

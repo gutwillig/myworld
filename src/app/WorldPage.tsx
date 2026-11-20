@@ -293,8 +293,8 @@ export default function WorldPage() {
         <div className={styles.topRight}>
           {world.buildings.length > 0 && !travel && <TourButton onClick={() => setTourRun((n) => n + 1)} />}
           {isHome && <KeepsakesMenu />}
-          {/* Hide navigation menus on mobile when visiting someone else's world */}
-          {(!isMobile || isHome) && <NeighborsMenu />}
+          {/* Neighbors menu hidden for now */}
+          {/* {(!isMobile || isHome) && <NeighborsMenu />} */}
           {(!isMobile || isHome) && <WorldMenu />}
           <UserMenu />
         </div>
