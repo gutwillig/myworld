@@ -295,7 +295,7 @@ export default function WorldPage() {
           {isHome && <KeepsakesMenu />}
           {/* Neighbors menu hidden for now */}
           {/* {(!isMobile || isHome) && <NeighborsMenu />} */}
-          {(!isMobile || isHome) && <WorldMenu />}
+          {isHome && <WorldMenu />}
           <UserMenu />
         </div>
       </header>
