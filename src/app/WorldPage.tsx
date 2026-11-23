@@ -362,8 +362,8 @@ export default function WorldPage() {
         </button>
       )}
 
-      {/* Hide prompt bar when visiting someone else's world without being signed in */}
-      <PromptBar hidden={touring || panelOpen || !!travel || !!arrived || !!moving || visiting || (!isHome && !user)} onPickingChange={setPicking} />
+      {/* Hide prompt bar when visiting someone else's world */}
+      <PromptBar hidden={touring || panelOpen || !!travel || !!arrived || !!moving || visiting || !isHome} onPickingChange={setPicking} />
 
       {building && showPanel && (
         <div className={`${styles.panelSlot} ${closing ? styles.panelOut : styles.panelIn}`} key={building.id}>
