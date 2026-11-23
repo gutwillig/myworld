@@ -233,8 +233,9 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
       for (let z = -extent; z <= extent; z += 0.25)
         for (let x = -extent; x <= extent; x += 0.25) {
           if (realmAt(x, z) !== k) continue;
-          let edgeD = 1.5;
-          outer: for (let r = 0.25; r < 1.5; r += 0.25)
+          // Check distance to realm boundary - require more clearance from borders
+          let edgeD = 2.5;
+          outer: for (let r = 0.25; r < 2.5; r += 0.25)
             for (let a = 0; a < 8; a++)
               if (realmAt(x + Math.cos(a * 0.785) * r, z + Math.sin(a * 0.785) * r) !== k) {
                 edgeD = r;
@@ -243,13 +244,13 @@ export const Realms = memo(function Realms({ world, interactive }: { world: Worl
           const occupied = mine.length > 1 || rm.count > 0;
           const siteD = occupied
             ? Math.min(
-                ...mine.map((s) => Math.hypot(x - s.x, z - s.z) - 0.9),
-                ...mine.map((s) => Math.hypot(x - s.x + 1.3, z - s.z + 1.3) - 0.9),
+                ...mine.map((s) => Math.hypot(x - s.x, z - s.z) - 1.2),
+                ...mine.map((s) => Math.hypot(x - s.x + 1.3, z - s.z + 1.3) - 1.2),
               )
             : 2 - Math.hypot(x - rm.anchor.x, z - rm.anchor.z);
           // ...and clear of the house in the middle and its name sign.
-          const homeD = Math.min(Math.hypot(x, z) - 1.4, Math.hypot(x + 1.3, z + 1.3) - 1);
-          const s = Math.min(edgeD * 1.2, siteD, homeD) - Math.hypot(x, z) * 0.02;
+          const homeD = Math.min(Math.hypot(x, z) - 1.6, Math.hypot(x + 1.3, z + 1.3) - 1.2);
+          const s = Math.min(edgeD * 1.5, siteD, homeD) - Math.hypot(x, z) * 0.02;
           if (s > best.s) best = { x, z, s };
         }
       return best;
