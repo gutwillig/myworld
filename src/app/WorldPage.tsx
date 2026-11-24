@@ -407,11 +407,11 @@ export default function WorldPage() {
       {/* Only show onboarding if not started AND not viewing someone else's public world */}
       {!started && !worldSlug && <WorldChoice />}
 
-      {/* Show CTA for visitors viewing someone else's world (only if not signed in) */}
-      <VisitorCta
+      {/* Visitor CTA hidden for now - TODO: show after 2 min delay */}
+      {/* <VisitorCta
         ownerName={world.ownerName}
         hidden={touring || isHome || panelOpen || !!travel || !!arrived || !started || !!user}
-      />
+      /> */}
     </main>
   );
 }
